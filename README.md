@@ -27,12 +27,10 @@ Double-click any knob to reset it; click a value to type one in (`1.2 s`, `250 m
 
 ## Getting the plugin
 
-**On Linux** you can use the ready-built VST3 in `prebuilt/Linux/` (x86-64). On Windows and macOS, use option A or B below.
+### Option A: download a release
+Open the repository's **Releases** page and download the zip for your system from the latest release. Installation steps are listed under each release.
 
-### Option A: let GitHub build it (no tools needed)
-1. Create a GitHub repository and upload this folder (keep the `.github` folder).
-2. Open the repo's **Actions** tab. The *Build plugin* workflow runs automatically on every push.
-3. When it finishes, download **Squeeze-Windows**, **Squeeze-macOS** or **Squeeze-Linux** from the run's *Artifacts* section.
+Every push to `main` is also built automatically. Those builds are under the **Actions** tab, in each run's *Artifacts* section, and GitHub deletes them after 90 days.
 
 ### Option B: build it yourself
 You need **CMake 3.22+**, **Git** and a C++17 compiler:
@@ -53,6 +51,13 @@ The plugin ends up in `build/Squeeze_artefacts/Release/VST3/Squeeze.vst3` (and `
 
 For a universal Mac binary (Apple Silicon and Intel), add `"-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64"` to the first command.
 Add `-DSQUEEZE_COPY_AFTER_BUILD=ON` to copy the plugin into your plugin folder automatically after each build (on Windows this needs an Administrator terminal).
+
+## Publishing a new release
+
+Create a release on GitHub (**Releases → Draft a new release**), type a new tag such as `v1.0.1`, and publish it.
+About 10 minutes later the Windows, macOS and Linux zips are attached to it automatically.
+You can also push a tag from the command line instead: `git tag v1.0.1 && git push origin v1.0.1`.
+The tag's number becomes the version your DAW shows, so use the `vMAJOR.MINOR.PATCH` format.
 
 ## Installing
 

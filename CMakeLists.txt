@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(Squeeze VERSION 1.0.0 LANGUAGES C CXX)
+# The version your DAW shows. Release builds set this from the git tag (v1.2.3 -> 1.2.3).
+set(SQUEEZE_VERSION "1.0.0" CACHE STRING "Plugin version (major.minor.patch)")
+
+project(Squeeze VERSION ${SQUEEZE_VERSION} LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
