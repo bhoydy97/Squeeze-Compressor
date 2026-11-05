@@ -90,7 +90,14 @@ void SqueezeAudioProcessorEditor::paint (juce::Graphics& g)
     g.drawText ("SQUEEZE", header.removeFromLeft (130), juce::Justification::centredLeft);
     g.setColour (Colours::accent);
     g.setFont (font (11.0f, true));
-    g.drawText ("COMPRESSOR", header.removeFromLeft (120).translated (0, 3), juce::Justification::centredLeft);
+    g.drawText ("COMPRESSOR", header.removeFromLeft (92).translated (0, 3), juce::Justification::centredLeft);
+
+    g.setColour (Colours::panelEdge.brighter (0.3f));
+    g.fillRect (header.getX(), header.getCentreY() - 8, 1, 18);
+    header.removeFromLeft (14);
+    g.setColour (Colours::dim);
+    g.setFont (font (13.0f, true));
+    g.drawText ("LBAudio", header.removeFromLeft (100).translated (0, 2), juce::Justification::centredLeft);
 
     g.setColour (Colours::panelEdge);
     g.drawHorizontalLine (56, 0.0f, (float) getWidth());

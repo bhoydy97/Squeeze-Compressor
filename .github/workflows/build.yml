@@ -68,14 +68,14 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force dist | Out-Null
-          Compress-Archive -Path build/Squeeze_artefacts/Release/VST3/Squeeze.vst3 `
+          Compress-Archive -Path build/Squeeze_artefacts/Release/VST3/Squeeze.vst3, build/THIRD_PARTY_NOTICES.txt `
             -DestinationPath "dist/Squeeze-$env:GITHUB_REF_NAME-Windows-VST3.zip"
 
       - name: Package (macOS)
         if: startsWith(github.ref, 'refs/tags/v') && runner.os == 'macOS'
         run: |
           mkdir -p dist stage
-          cp -R build/Squeeze_artefacts/Release/VST3/Squeeze.vst3 build/Squeeze_artefacts/Release/AU/Squeeze.component stage/
+          cp -R build/Squeeze_artefacts/Release/VST3/Squeeze.vst3 build/Squeeze_artefacts/Release/AU/Squeeze.component build/THIRD_PARTY_NOTICES.txt stage/
           ditto -c -k stage "dist/Squeeze-${GITHUB_REF_NAME}-macOS-VST3-AU.zip"
 
       - name: Package (Linux)
@@ -83,6 +83,7 @@ jobs:
         run: |
           mkdir -p dist
           (cd build/Squeeze_artefacts/Release/VST3 && zip -r -y "$GITHUB_WORKSPACE/dist/Squeeze-${GITHUB_REF_NAME}-Linux-VST3.zip" Squeeze.vst3)
+          zip -j "dist/Squeeze-${GITHUB_REF_NAME}-Linux-VST3.zip" build/THIRD_PARTY_NOTICES.txt
 
       - name: Upload release package
         if: startsWith(github.ref, 'refs/tags/v')

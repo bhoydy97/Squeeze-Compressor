@@ -1,8 +1,8 @@
-# Squeeze — compressor plugin (VST3 / AU)
+# Squeeze by LBAudio — compressor plugin (VST3 / AU)
 
 ![Squeeze UI](docs/screenshot.png)
 
-Squeeze is a clean, zero-latency feed-forward compressor built with [JUCE 8](https://juce.com).
+Squeeze is a clean, zero-latency feed-forward compressor by LBAudio, built with [JUCE 8](https://juce.com).
 It builds as **VST3** on Windows, macOS and Linux, and also as **Audio Unit** on macOS (for Logic / GarageBand).
 
 ## Controls
@@ -69,7 +69,7 @@ Copy the whole `Squeeze.vst3` folder (it's a bundle, not one file) to:
 | macOS | `~/Library/Audio/Plug-Ins/VST3/` (AU: `~/Library/Audio/Plug-Ins/Components/`) |
 | Linux | `~/.vst3/` |
 
-Then rescan plugins in your DAW. Squeeze shows up under **Squeeze Audio → Squeeze** in the Dynamics category.
+Then rescan plugins in your DAW. Squeeze shows up under **LBAudio → Squeeze** in the Dynamics category.
 
 **macOS note:** plugins you built yourself or downloaded from GitHub Actions aren't code-signed. If your DAW refuses to load it, run
 `xattr -cr ~/Library/Audio/Plug-Ins/VST3/Squeeze.vst3` (and the same for the `.component`).
@@ -98,13 +98,25 @@ Source/UI.h                 look and feel, transfer-curve display, meters
 tests/PluginTests.cpp       host-based test tool
 ```
 
-## Making it yours
+## Plugin identity
 
-To rename the plugin, change `COMPANY_NAME`, `PRODUCT_NAME`, `BUNDLE_ID`, `PLUGIN_MANUFACTURER_CODE` and `PLUGIN_CODE` in `CMakeLists.txt`.
-The two codes are 4 characters each, and the manufacturer code needs at least one capital letter.
-Give each plugin you release its own plugin code.
+The name, company and IDs are set in `CMakeLists.txt`:
 
-## License
+| Setting | Value |
+|---|---|
+| Product | Squeeze |
+| Company | LBAudio |
+| Bundle ID | `com.lbaudio.squeeze` |
+| Manufacturer code | `LBau` |
+| Plugin code | `Sqz1` |
 
-JUCE is dual-licensed: AGPLv3, or a commercial license (with a free tier for small developers).
-If you distribute this plugin, check that you follow the terms of one of them; see [juce.com/get-juce](https://juce.com/get-juce).
+DAWs recognise the plugin by its manufacturer and plugin codes. Don't change them once people own a copy, or their saved sessions won't find it.
+Give any future LBAudio plugin the same manufacturer code (`LBau`) and its own new plugin code.
+
+## Licensing
+
+Copyright (c) 2026 LBAudio. All rights reserved.
+
+- **JUCE** is dual-licensed: AGPLv3, or the commercial JUCE licence. To sell Squeeze as closed source you need a JUCE licence; the free Starter tier has a revenue limit. See [juce.com/get-juce](https://juce.com/get-juce).
+- **Third-party notices:** every build writes `THIRD_PARTY_NOTICES.txt` into the build folder, with the licences of the code JUCE compiles into the plugin (the VST 3 SDK under MIT, HarfBuzz, libpng, zlib and others). Include it with every copy you distribute; the GitHub release zips already do.
+- **VST logo:** the VST 3 SDK is MIT-licensed, but the VST name and logo are Steinberg trademarks. If you show the logo on your product page, follow the `VST3_Usage_Guidelines.pdf` that ships in the SDK, inside JUCE.
