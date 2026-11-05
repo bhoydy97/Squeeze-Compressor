@@ -99,7 +99,7 @@ Then, from this folder:
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build --config Release --parallel
+cmake --build build --config Release --parallel 4
 ```
 
 JUCE is downloaded automatically the first time you configure, which takes a minute or two.
@@ -142,7 +142,7 @@ Then rescan plugins in your DAW. They show up under **LBAudio**.
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DLBAUDIO_BUILD_TESTS=ON
-cmake --build build --config Release --parallel
+cmake --build build --config Release --parallel 4
 ./build/plugins/Haze/HazeTests_artefacts/Release/HazeTests build/plugins/Haze/Haze_artefacts/Release/VST3/Haze.vst3 haze.png
 ```
 
