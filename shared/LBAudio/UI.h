@@ -1,9 +1,12 @@
 #pragma once
 
-#include <juce_gui_basics/juce_gui_basics.h>
-#include "CompressorDSP.h"
+// LBAudio shared look: colours, fonts, knob/toggle drawing and level meters.
+// Every LBAudio plugin uses these so the range looks and behaves the same.
 
-namespace squeeze::ui
+#include <juce_gui_basics/juce_gui_basics.h>
+#include <juce_audio_processors/juce_audio_processors.h>
+
+namespace lbaudio::ui
 {
 
 namespace Colours
@@ -43,6 +46,8 @@ public:
         setColour (juce::TextEditor::highlightColourId, Colours::accent.withAlpha (0.3f));
         setColour (juce::TextEditor::highlightedTextColourId, Colours::text);
         setColour (juce::CaretComponent::caretColourId, Colours::accent);
+        setColour (juce::TextButton::textColourOffId, Colours::dim);
+        setColour (juce::TextButton::textColourOnId, juce::Colour (0xff07211e));
     }
 
     void drawRotarySlider (juce::Graphics& g, int x, int y, int width, int height, float pos,
@@ -61,9 +66,13 @@ public:
         g.setColour (Colours::track.withMultipliedAlpha (alpha));
         g.strokePath (track, { lineW, juce::PathStrokeType::curved, juce::PathStrokeType::rounded });
 
-        // Bipolar knobs (e.g. makeup) draw their arc from the zero point.
+        // Bipolar knobs (e.g. makeup) draw their arc from the zero point, or from an "origin" value if set
+        // (e.g. 100% width).
         float arcStart = startAngle;
-        if (slider.getProperties().contains ("bipolar"))
+        const auto& props = slider.getProperties();
+        if (props.contains ("origin"))
+            arcStart = startAngle + (float) slider.valueToProportionOfLength ((double) props["origin"]) * (endAngle - startAngle);
+        else if (props.contains ("bipolar"))
             arcStart = startAngle + (float) slider.valueToProportionOfLength (0.0) * (endAngle - startAngle);
 
         if (std::abs (angle - arcStart) > 0.001f)
@@ -110,6 +119,21 @@ public:
                     juce::Justification::centred);
     }
 
+    void drawButtonBackground (juce::Graphics& g, juce::Button& b, const juce::Colour&, bool highlighted, bool) override
+    {
+        const auto r = b.getLocalBounds().toFloat().reduced (0.5f);
+        const bool on = b.getToggleState();
+        g.setColour (on ? Colours::accent : (highlighted ? Colours::panelEdge : Colours::background));
+        g.fillRoundedRectangle (r, r.getHeight() * 0.5f);
+        if (! on)
+        {
+            g.setColour (Colours::panelEdge.brighter (highlighted ? 0.3f : 0.0f));
+            g.drawRoundedRectangle (r, r.getHeight() * 0.5f, 1.0f);
+        }
+    }
+
+    juce::Font getTextButtonFont (juce::TextButton&, int) override { return font (11.5f, true); }
+
     juce::Label* createSliderTextBox (juce::Slider& s) override
     {
         auto* l = LookAndFeel_V4::createSliderTextBox (s);
@@ -119,109 +143,6 @@ public:
     }
 
     juce::Font getLabelFont (juce::Label& l) override { return l.getFont(); }
-};
-
-//==============================================================================
-// Static input -> output curve, with a dot riding on it at the current input level.
-class TransferCurve final : public juce::Component
-{
-public:
-    void setState (const CompressorParams& p, float inputDb)
-    {
-        params = p;
-        inputLevelDb = inputDb;
-        repaint();
-    }
-
-    void paint (juce::Graphics& g) override
-    {
-        auto area = getLocalBounds().toFloat();
-        g.setColour (Colours::panel);
-        g.fillRoundedRectangle (area, 8.0f);
-        g.setColour (Colours::panelEdge);
-        g.drawRoundedRectangle (area.reduced (0.5f), 8.0f, 1.0f);
-
-        const auto plot = area.reduced (14.0f).withTrimmedLeft (18.0f).withTrimmedBottom (16.0f);
-        auto toX = [&] (float db) { return juce::jmap (db, minDb, maxDb, plot.getX(), plot.getRight()); };
-        auto toY = [&] (float db) { return juce::jmap (db, minDb, maxDb, plot.getBottom(), plot.getY()); };
-
-        // Grid + axis labels
-        g.setFont (font (10.0f));
-        for (float db = minDb; db <= maxDb + 0.01f; db += 12.0f)
-        {
-            g.setColour (Colours::panelEdge);
-            g.drawHorizontalLine ((int) toY (db), plot.getX(), plot.getRight());
-            g.drawVerticalLine ((int) toX (db), plot.getY(), plot.getBottom());
-
-            g.setColour (Colours::dim.withAlpha (0.8f));
-            const auto label = juce::String ((int) db);
-            g.drawText (label, juce::Rectangle<float> (28.0f, 12.0f).withCentre ({ toX (db), plot.getBottom() + 10.0f }),
-                        juce::Justification::centred);
-            g.drawText (label, juce::Rectangle<float> (26.0f, 12.0f).withCentre ({ plot.getX() - 15.0f, toY (db) }),
-                        juce::Justification::centredRight);
-        }
-
-        // Unity line
-        juce::Path unity;
-        unity.startNewSubPath (toX (minDb), toY (minDb));
-        unity.lineTo (toX (maxDb), toY (maxDb));
-        juce::Path dashed;
-        const float dashes[] = { 4.0f, 4.0f };
-        juce::PathStrokeType (1.0f).createDashedStroke (dashed, unity, dashes, 2);
-        g.setColour (Colours::dim.withAlpha (0.35f));
-        g.fillPath (dashed);
-
-        juce::Graphics::ScopedSaveState clip (g);
-        g.reduceClipRegion (plot.toNearestInt());
-
-        // Threshold marker + knee band
-        const float tx = toX (params.thresholdDb);
-        if (params.kneeDb > 0.0f)
-        {
-            g.setColour (Colours::accent.withAlpha (0.06f));
-            g.fillRect (juce::Rectangle<float>::leftTopRightBottom (toX (params.thresholdDb - params.kneeDb * 0.5f), plot.getY(),
-                                                                    toX (params.thresholdDb + params.kneeDb * 0.5f), plot.getBottom()));
-        }
-        g.setColour (Colours::accent.withAlpha (0.25f));
-        g.drawVerticalLine ((int) tx, plot.getY(), plot.getBottom());
-
-        // Curve
-        juce::Path curve;
-        const int steps = (int) plot.getWidth();
-        for (int i = 0; i <= steps; ++i)
-        {
-            const float inDb = juce::jmap ((float) i, 0.0f, (float) steps, minDb, maxDb);
-            const float y = toY (Compressor::staticOutputDb (inDb, params));
-            if (i == 0) curve.startNewSubPath (toX (inDb), y);
-            else        curve.lineTo (toX (inDb), y);
-        }
-
-        juce::Path fill (curve);
-        fill.lineTo (plot.getRight(), plot.getBottom());
-        fill.lineTo (plot.getX(), plot.getBottom());
-        fill.closeSubPath();
-        g.setGradientFill (juce::ColourGradient (Colours::accent.withAlpha (0.16f), 0.0f, plot.getY(),
-                                                 Colours::accent.withAlpha (0.0f), 0.0f, plot.getBottom(), false));
-        g.fillPath (fill);
-
-        g.setColour (Colours::accent);
-        g.strokePath (curve, juce::PathStrokeType (2.2f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
-
-        // Live input dot
-        if (inputLevelDb > minDb)
-        {
-            const juce::Point<float> p { toX (inputLevelDb), toY (Compressor::staticOutputDb (inputLevelDb, params)) };
-            g.setColour (Colours::gr.withAlpha (0.25f));
-            g.fillEllipse (juce::Rectangle<float> (16.0f, 16.0f).withCentre (p));
-            g.setColour (Colours::gr);
-            g.fillEllipse (juce::Rectangle<float> (8.0f, 8.0f).withCentre (p));
-        }
-    }
-
-private:
-    static constexpr float minDb = -60.0f, maxDb = 0.0f;
-    CompressorParams params;
-    float inputLevelDb = -100.0f;
 };
 
 //==============================================================================
@@ -320,4 +241,171 @@ private:
     int holdTicks = 0;
 };
 
-} // namespace squeeze::ui
+
+//==============================================================================
+// Shared painting helpers
+
+inline void paintPanel (juce::Graphics& g, juce::Rectangle<int> r)
+{
+    g.setColour (Colours::panel);
+    g.fillRoundedRectangle (r.toFloat(), 8.0f);
+    g.setColour (Colours::panelEdge);
+    g.drawRoundedRectangle (r.toFloat().reduced (0.5f), 8.0f, 1.0f);
+}
+
+// The header strip every LBAudio plugin shares: NAME  TYPE | LBAudio
+inline void paintHeader (juce::Graphics& g, int width, const juce::String& name, const juce::String& type)
+{
+    auto header = juce::Rectangle<int> (0, 0, width, 56).reduced (20, 0);
+    g.setColour (Colours::text);
+    g.setFont (font (24.0f, true));
+    const int nameW = juce::GlyphArrangement::getStringWidthInt (font (24.0f, true), name.toUpperCase()) + 18;
+    g.drawText (name.toUpperCase(), header.removeFromLeft (nameW), juce::Justification::centredLeft);
+    g.setColour (Colours::accent);
+    g.setFont (font (11.0f, true));
+    const int typeW = juce::GlyphArrangement::getStringWidthInt (font (11.0f, true), type.toUpperCase()) + 16;
+    g.drawText (type.toUpperCase(), header.removeFromLeft (typeW).translated (0, 3), juce::Justification::centredLeft);
+    g.setColour (Colours::panelEdge.brighter (0.3f));
+    g.fillRect (header.getX(), header.getCentreY() - 8, 1, 18);
+    header.removeFromLeft (14);
+    g.setColour (Colours::dim);
+    g.setFont (font (13.0f, true));
+    g.drawText ("LBAudio", header.removeFromLeft (100).translated (0, 2), juce::Justification::centredLeft);
+    g.setColour (Colours::panelEdge);
+    g.drawHorizontalLine (56, 0.0f, (float) width);
+}
+
+//==============================================================================
+// A rotary knob with its title above and value box below, bound to a parameter.
+class LabelledKnob final : public juce::Component
+{
+public:
+    LabelledKnob (juce::AudioProcessorValueTreeState& state, const juce::String& paramID,
+                  const juce::String& title, bool bipolar = false)
+    {
+        slider.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
+        slider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 90, 20);
+        slider.setRotaryParameters (juce::MathConstants<float>::pi * 1.25f, juce::MathConstants<float>::pi * 2.75f, true);
+        if (bipolar) slider.getProperties().set ("bipolar", true);
+        attachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (state, paramID, slider);
+        if (auto* param = state.getParameter (paramID))
+            slider.setDoubleClickReturnValue (true, param->convertFrom0to1 (param->getDefaultValue()));
+
+        label.setText (title, juce::dontSendNotification);
+        label.setFont (font (11.5f, true));
+        label.setColour (juce::Label::textColourId, Colours::dim);
+        label.setJustificationType (juce::Justification::centred);
+        label.setInterceptsMouseClicks (false, false);
+        addAndMakeVisible (slider);
+        addAndMakeVisible (label);
+    }
+
+    void resized() override
+    {
+        auto r = getLocalBounds();
+        const int knob = juce::jmin (r.getWidth() - 8, r.getHeight() - 18 - 22);
+        auto group = r.withSizeKeepingCentre (r.getWidth(), 18 + knob + 22);
+        label.setBounds (group.removeFromTop (18));
+        slider.setBounds (group);
+    }
+
+    juce::Slider slider;
+    juce::Label label;
+
+private:
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> attachment;
+};
+
+//==============================================================================
+// A pill toggle bound to a bool parameter.
+class Switch final : public juce::Component
+{
+public:
+    Switch (juce::AudioProcessorValueTreeState& state, const juce::String& paramID, const juce::String& text)
+        : button (text)
+    {
+        attachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (state, paramID, button);
+        addAndMakeVisible (button);
+    }
+    void resized() override { button.setBounds (getLocalBounds()); }
+    juce::ToggleButton button;
+
+private:
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> attachment;
+};
+
+//==============================================================================
+// Segmented buttons for a choice parameter (e.g. Tape | Tube | Clip).
+class Segmented final : public juce::Component
+{
+public:
+    Segmented (juce::AudioProcessorValueTreeState& state, const juce::String& paramID)
+    {
+        auto* param = dynamic_cast<juce::AudioParameterChoice*> (state.getParameter (paramID));
+        jassert (param != nullptr);
+        choices = param->choices;
+        attachment = std::make_unique<juce::ParameterAttachment> (*param, [this] (float v) { selected = juce::roundToInt (v); repaint(); });
+        attachment->sendInitialUpdate();
+        setWantsKeyboardFocus (true);
+    }
+
+    void paint (juce::Graphics& g) override
+    {
+        auto r = getLocalBounds().toFloat().reduced (1.0f);
+        g.setColour (Colours::background);
+        g.fillRoundedRectangle (r, r.getHeight() * 0.5f);
+        g.setColour (Colours::panelEdge);
+        g.drawRoundedRectangle (r, r.getHeight() * 0.5f, 1.0f);
+        const float w = r.getWidth() / (float) juce::jmax (1, choices.size());
+        for (int i = 0; i < choices.size(); ++i)
+        {
+            auto cell = juce::Rectangle<float> (r.getX() + w * (float) i, r.getY(), w, r.getHeight()).reduced (3.0f);
+            const bool on = i == selected;
+            if (on)
+            {
+                g.setColour (Colours::accent);
+                g.fillRoundedRectangle (cell, cell.getHeight() * 0.5f);
+            }
+            g.setColour (on ? juce::Colour (0xff07211e) : Colours::dim);
+            g.setFont (font (11.5f, true));
+            g.drawText (choices[i].toUpperCase(), cell, juce::Justification::centred);
+        }
+        if (hasKeyboardFocus (false))
+        {
+            g.setColour (Colours::accent.withAlpha (0.6f));
+            g.drawRoundedRectangle (r, r.getHeight() * 0.5f, 1.5f);
+        }
+    }
+
+    void mouseDown (const juce::MouseEvent& e) override
+    {
+        const int i = juce::jlimit (0, choices.size() - 1, (int) ((float) e.x / (float) getWidth() * (float) choices.size()));
+        attachment->setValueAsCompleteGesture ((float) i);
+    }
+
+    bool keyPressed (const juce::KeyPress& k) override
+    {
+        if (k == juce::KeyPress::leftKey || k == juce::KeyPress::rightKey)
+        {
+            const int i = juce::jlimit (0, choices.size() - 1, selected + (k == juce::KeyPress::rightKey ? 1 : -1));
+            attachment->setValueAsCompleteGesture ((float) i);
+            return true;
+        }
+        return false;
+    }
+
+private:
+    juce::StringArray choices;
+    int selected = 0;
+    std::unique_ptr<juce::ParameterAttachment> attachment;
+};
+
+//==============================================================================
+// Thread-safe "peak since last read" value for meters.
+inline void storeMax (std::atomic<float>& target, float value) noexcept
+{
+    auto prev = target.load (std::memory_order_relaxed);
+    while (value > prev && ! target.compare_exchange_weak (prev, value, std::memory_order_relaxed)) {}
+}
+
+} // namespace lbaudio::ui
