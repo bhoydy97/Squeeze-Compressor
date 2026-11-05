@@ -71,6 +71,7 @@ function(lbaudio_add_plugin name)
             PRIVATE
                 lbaudio_shared
                 ${modules}
+                juce::juce_audio_formats
             PUBLIC
                 juce::juce_recommended_config_flags
                 juce::juce_recommended_warning_flags)

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 // Shared test harness for LBAudio plugins.
 //
 // Each <Name>Tests tool:
@@ -7,6 +9,7 @@
 //   2. runs the same checks on the processor compiled into the tool,
 //   3. optionally renders the plugin window to a PNG.
 
+#include <juce_audio_formats/juce_audio_formats.h>
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <functional>
@@ -238,6 +241,121 @@ void renderSnapshot (const juce::File& png, std::function<void (Harness&)> setup
     juce::FileOutputStream os (png);
     juce::PNGImageFormat().writeImageToStream (image, os);
     std::cout << "  wrote " << png.getFullPathName() << " (" << image.getWidth() << "x" << image.getHeight() << ")" << std::endl;
+}
+
+// Renders a plugin window as video frames: the editor, fed an audio file, snapshotted 'fps' times a second.
+//   <Name>Tests --ui-video <in.wav> <out-dir> <fps> <width-px> <start-s> <seconds> [Name=Value ...]
+// Writes <out-dir>/frame-00000.jpg ... and <out-dir>/audio.wav: the plugin's output over the same span,
+// latency-compensated. The file is played through once first (on a loop), so meters, graphs, reverb tails and
+// loudness readings are already running when the first frame is taken. Switches take on/off.
+template <typename Processor, typename Editor>
+std::optional<int> maybeUIVideo (int argc, char** argv)
+{
+    if (argc < 8 || juce::String (argv[1]) != "--ui-video")
+        return std::nullopt;
+
+    juce::ScopedJuceInitialiser_GUI juceInit;
+    const auto cwd = juce::File::getCurrentWorkingDirectory();
+    const auto inFile = cwd.getChildFile (argv[2]);
+    const auto outDir = cwd.getChildFile (argv[3]);
+    const int fps = juce::jmax (1, juce::String (argv[4]).getIntValue());
+    const int widthPx = juce::jmax (100, juce::String (argv[5]).getIntValue());
+    const double startS = juce::String (argv[6]).getDoubleValue();
+    const double seconds = juce::String (argv[7]).getDoubleValue();
+
+    juce::AudioFormatManager formats;
+    formats.registerBasicFormats();
+    std::unique_ptr<juce::AudioFormatReader> reader (formats.createReaderFor (inFile));
+    if (reader == nullptr) { std::cerr << "cannot read " << inFile.getFullPathName() << std::endl; return 1; }
+    const double sr = reader->sampleRate;
+    const int n = (int) reader->lengthInSamples;
+    juce::AudioBuffer<float> audio (2, n);
+    reader->read (&audio, 0, n, 0, true, true);
+
+    Processor proc;
+    for (int i = 8; i < argc; ++i)
+    {
+        const juce::String arg (argv[i]);
+        const auto name = arg.upToFirstOccurrenceOf ("=", false, false).trim();
+        const auto value = arg.fromFirstOccurrenceOf ("=", false, false).trim();
+        juce::AudioProcessorParameter* param = nullptr;
+        for (auto* p : proc.getParameters())
+            if (p->getName (64).equalsIgnoreCase (name)) param = p;
+        if (param == nullptr) { std::cerr << "unknown parameter: " << name << std::endl; return 1; }
+        const bool isSwitch = value.equalsIgnoreCase ("on") || value.equalsIgnoreCase ("off");
+        param->setValueNotifyingHost (isSwitch ? (value.equalsIgnoreCase ("on") ? 1.0f : 0.0f) : param->getValueForText (value));
+    }
+
+    const int spf = juce::roundToInt (sr / fps);
+    proc.setRateAndBufferSizeDetails (sr, spf);
+    proc.prepareToPlay (sr, spf);
+    juce::AudioBuffer<float> block (juce::jmax (2, proc.getTotalNumInputChannels(), proc.getTotalNumOutputChannels()), spf);
+    juce::MidiBuffer midi;
+    block.clear();
+    proc.processBlock (block, midi); // parameter changes reach the plugin
+    proc.reset();
+    const int latency = juce::jmax (0, proc.getLatencySamples());
+
+    long long pos = 0; // input position, looping over the file
+    auto processChunk = [&] (int len, juce::AudioBuffer<float>* keep)
+    {
+        block.setSize (block.getNumChannels(), len, false, false, true);
+        block.clear();
+        for (int i = 0; i < len; ++i, ++pos)
+            for (int ch = 0; ch < 2; ++ch)
+                block.setSample (ch, i, audio.getSample (ch, (int) (pos % n)));
+        proc.processBlock (block, midi);
+        if (keep != nullptr)
+        {
+            const int at = keep->getNumSamples();
+            keep->setSize (2, at + len, true, false, true);
+            for (int ch = 0; ch < 2; ++ch) keep->copyFrom (ch, at, block, ch, 0, len);
+        }
+    };
+
+    // The span starts in the second time round the file, so everything is warmed up by then.
+    outDir.createDirectory();
+    Editor editor (proc);
+    const float scale = (float) widthPx / (float) editor.getWidth();
+    const long long first = (long long) n + (long long) std::llround (startS * sr);
+    const long long last = first + (long long) std::llround (seconds * sr);
+    processChunk ((int) (first % spf), nullptr); // so the frames below fall exactly on 'first'
+    while (pos < first) { processChunk (spf, nullptr); editor.refreshFromProcessor(); }
+
+    juce::AudioBuffer<float> out (2, 0);
+    juce::JPEGImageFormat jpeg;
+    jpeg.setQuality (0.92f);
+    int frame = 0;
+    while (pos < last + latency + spf)
+    {
+        const bool inSpan = pos < last;
+        processChunk (spf, &out);
+        editor.refreshFromProcessor();
+        if (inSpan)
+        {
+            const auto image = editor.createComponentSnapshot (editor.getLocalBounds(), true, scale);
+            auto file = outDir.getChildFile (juce::String::formatted ("frame-%05d.jpg", frame++));
+            file.deleteFile();
+            juce::FileOutputStream os (file);
+            jpeg.writeImageToStream (image, os);
+        }
+    }
+
+    // Output aligned with the input: skip the plugin's latency
+    const int keepN = (int) (last - first);
+    juce::AudioBuffer<float> aligned (2, keepN);
+    for (int ch = 0; ch < 2; ++ch) aligned.copyFrom (ch, 0, out, ch, latency, keepN);
+    auto wavFile = outDir.getChildFile ("audio.wav");
+    wavFile.deleteFile();
+    std::unique_ptr<juce::OutputStream> stream = std::make_unique<juce::FileOutputStream> (wavFile);
+    juce::WavAudioFormat wav;
+    auto writer = wav.createWriterFor (stream, juce::AudioFormatWriterOptions{}.withSampleRate (sr).withNumChannels (2)
+                                                  .withBitsPerSample (32).withSampleFormat (juce::AudioFormatWriterOptions::SampleFormat::floatingPoint));
+    if (writer == nullptr) { std::cerr << "cannot write audio" << std::endl; return 1; }
+    writer->writeFromAudioSampleBuffer (aligned, 0, keepN);
+    std::cout << "frames " << frame << " (" << editor.getWidth() * scale << " px wide), latency " << latency
+              << ", wrote " << outDir.getFullPathName() << std::endl;
+    return 0;
 }
 
 // main() for every <Name>Tests tool.

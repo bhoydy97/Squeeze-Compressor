@@ -163,6 +163,7 @@ void runSuite (juce::AudioProcessor& proc)
 
 int main (int argc, char** argv)
 {
+    if (auto result = maybeUIVideo<SqueezeAudioProcessor, SqueezeAudioProcessorEditor> (argc, argv)) return *result;
     return runMain (argc, argv, runSuite,
         [] { return std::make_unique<SqueezeAudioProcessor>(); },
         [] (const juce::File& png)

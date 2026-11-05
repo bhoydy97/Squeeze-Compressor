@@ -302,6 +302,7 @@ void runSuite (juce::AudioProcessor& proc)
 
 int main (int argc, char** argv)
 {
+    if (auto result = maybeUIVideo<CeilingAudioProcessor, CeilingAudioProcessorEditor> (argc, argv)) return *result;
     loudnessChecks();
     return runMain (argc, argv, runSuite,
         [] { return std::make_unique<CeilingAudioProcessor>(); },

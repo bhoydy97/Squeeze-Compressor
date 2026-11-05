@@ -263,6 +263,7 @@ Gen bursts()
 
 int main (int argc, char** argv)
 {
+    if (auto result = maybeUIVideo<HazeAudioProcessor, HazeAudioProcessorEditor> (argc, argv)) return *result;
     return runMain (argc, argv, runSuite,
         [] { return std::make_unique<HazeAudioProcessor>(); },
         [] (const juce::File& png)
