@@ -1,0 +1,17 @@
+LBAudio plugins: installing on Windows
+======================================
+
+1. Copy each .vst3 folder from this zip into:
+
+       C:\Program Files\Common Files\VST3\
+
+   (Copy the whole .vst3 folder, not just what's inside it. Windows may ask
+   for administrator permission: click Continue.)
+
+2. Open your DAW and rescan plugins. They appear under "LBAudio".
+
+Works in any 64-bit Windows DAW that supports VST3: Ableton Live, FL Studio,
+Cubase, Studio One, Reaper, Bitwig and others.
+
+Your licence: https://lbaudio.co.uk/licence.html
+Help:         support@lbaudio.co.uk

@@ -1,0 +1,13 @@
+LBAudio plugins: installing on Linux
+====================================
+
+1. Copy each .vst3 folder from this zip into ~/.vst3/
+   (create the folder if it doesn't exist):
+
+       mkdir -p ~/.vst3 && cp -r *.vst3 ~/.vst3/
+
+2. Open your DAW (Reaper, Bitwig, Ardour and others) and rescan plugins.
+   They appear under "LBAudio".
+
+Your licence: https://lbaudio.co.uk/licence.html
+Help:         support@lbaudio.co.uk

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Signs the macOS VST3 and AU with a Developer ID certificate, then has Apple
-# notarize them so Gatekeeper lets them load without warnings.
+# Signs every plugin's macOS VST3 and AU with a Developer ID certificate, then has
+# Apple notarize them so Gatekeeper lets them load without warnings.
 #
 # Needs these GitHub repository secrets:
 #   MACOS_CERTIFICATE           base64 of the "Developer ID Application" .p12 export
@@ -10,8 +10,15 @@
 #   APPLE_TEAM_ID               10-character Team ID from developer.apple.com/account
 set -euo pipefail
 
-ARTEFACTS="build/Squeeze_artefacts/Release"
-BUNDLES=("$ARTEFACTS/VST3/Squeeze.vst3" "$ARTEFACTS/AU/Squeeze.component")
+BUNDLES=()
+for bundle in build/plugins/*/*_artefacts/Release/VST3/*.vst3 build/plugins/*/*_artefacts/Release/AU/*.component; do
+  [[ -e "$bundle" ]] && BUNDLES+=("$bundle")
+done
+if [[ ${#BUNDLES[@]} -eq 0 ]]; then
+  echo "::error::No plugin bundles found under build/plugins"
+  exit 1
+fi
+echo "Bundles to sign: ${#BUNDLES[@]}"
 
 for name in MACOS_CERTIFICATE MACOS_CERTIFICATE_PASSWORD APPLE_ID APPLE_APP_PASSWORD APPLE_TEAM_ID; do
   if [[ -z "${!name:-}" ]]; then
@@ -48,7 +55,7 @@ for bundle in "${BUNDLES[@]}"; do
   codesign --verify --strict --verbose=2 "$bundle"
 done
 
-# 3) Send both to Apple's notary service and wait for the result
+# 3) Send them all to Apple's notary service in one go and wait for the result
 STAGE="$RUNNER_TEMP/notarize"
 mkdir -p "$STAGE"
 cp -R "${BUNDLES[@]}" "$STAGE/"

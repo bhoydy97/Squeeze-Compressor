@@ -1,0 +1,25 @@
+LBAudio plugins: installing on a Mac
+====================================
+
+Works on Apple Silicon and Intel Macs, macOS 10.13 or later.
+
+1. Copy each .vst3 into:          ~/Library/Audio/Plug-Ins/VST3/
+   and each .component into:      ~/Library/Audio/Plug-Ins/Components/
+
+   To get there: in Finder choose Go > Go to Folder..., paste the path,
+   and press Return. Create the folder if it isn't there.
+
+   Use the .vst3 for Ableton Live, Cubase, Studio One, Reaper, Bitwig and
+   FL Studio; the .component (Audio Unit) for Logic Pro and GarageBand.
+
+2. Open your DAW and rescan plugins. They appear under "LBAudio".
+
+If your DAW says a plugin "can't be opened" or is damaged, macOS has
+quarantined the download. Open Terminal and run:
+
+    xattr -cr ~/Library/Audio/Plug-Ins/VST3 ~/Library/Audio/Plug-Ins/Components
+
+then restart your DAW.
+
+Your licence: https://lbaudio.co.uk/licence.html
+Help:         support@lbaudio.co.uk

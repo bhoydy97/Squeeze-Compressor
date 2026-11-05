@@ -1,22 +1,98 @@
-name: Build plugin
+name: Build plugins
 
-# Builds on every push to main (README and website changes are skipped).
-# Pushing a version tag such as v1.0.1, or publishing a release with a new tag
-# on GitHub, also attaches ready-to-install zips to that release.
+# Every push to main: a Linux build of all the plugins, then their test suites and pluginval.
+# A version tag (such as v1.1.0, including one made by publishing a release on GitHub), or
+# running this workflow by hand (Actions > Build plugins > Run workflow), also builds for
+# Windows, macOS and Linux and packages the zips: one per plugin per system, plus the bundle.
+# Tag builds attach those zips to the GitHub release.
 
 on:
   push:
     branches: [main]
     tags: ['v*']
-    paths-ignore: ['**.md', 'docs/**', 'website/**']
+    paths-ignore: ['**.md', 'docs/**', 'website/**', 'packaging/**']
   workflow_dispatch:
 
 permissions:
   contents: read
 
+# A newer push to main replaces a build that's still running for an older one (saves minutes)
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
 jobs:
+  test:
+    name: Linux build and tests
+    runs-on: ubuntu-latest
+    env:
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      CCACHE_MAXSIZE: 1G
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev libx11-dev libxcomposite-dev libxcursor-dev \
+            libxext-dev libxinerama-dev libxrandr-dev libxrender-dev libfreetype-dev \
+            libfontconfig1-dev libgl1-mesa-dev xvfb ccache
+
+      - name: Restore compiler cache
+        uses: actions/cache@v5
+        with:
+          path: .ccache
+          key: ccache-linux-${{ github.sha }}
+          restore-keys: ccache-linux-
+
+      - name: Configure
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DLBAUDIO_BUILD_TESTS=ON -DLBAUDIO_LTO=OFF \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Run each plugin's test suite
+        run: |
+          mkdir -p screenshots
+          failed=""
+          for dir in plugins/*/; do
+            p="$(basename "$dir")"
+            echo "::group::$p tests"
+            xvfb-run -a "build/plugins/$p/${p}Tests_artefacts/Release/${p}Tests" \
+              "build/plugins/$p/${p}_artefacts/Release/VST3/$p.vst3" "screenshots/$p.png" || failed="$failed $p"
+            echo "::endgroup::"
+          done
+          if [ -n "$failed" ]; then echo "::error::Tests failed for:$failed"; exit 1; fi
+
+      - name: Validate with pluginval
+        run: |
+          curl -sSL -o pluginval.zip https://github.com/Tracktion/pluginval/releases/download/v1.0.4/pluginval_Linux.zip
+          unzip -q -o pluginval.zip -d pluginval
+          failed=""
+          for dir in plugins/*/; do
+            p="$(basename "$dir")"
+            echo "::group::$p pluginval"
+            xvfb-run -a pluginval/pluginval --strictness-level 10 --validate-in-process --timeout-ms 600000 \
+              "build/plugins/$p/${p}_artefacts/Release/VST3/$p.vst3" || failed="$failed $p"
+            echo "::endgroup::"
+          done
+          if [ -n "$failed" ]; then echo "::error::pluginval failed for:$failed"; exit 1; fi
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: screenshots
+          path: screenshots/*.png
+          retention-days: 14
+          if-no-files-found: ignore
+
   build:
     name: ${{ matrix.name }}
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    needs: test
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -39,16 +115,16 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libasound2-dev libx11-dev libxcomposite-dev libxcursor-dev \
             libxext-dev libxinerama-dev libxrandr-dev libxrender-dev libfreetype-dev \
-            libfontconfig1-dev libgl1-mesa-dev
+            libfontconfig1-dev libgl1-mesa-dev zip
 
       - name: Configure
         shell: bash
         run: |
           args=(-S . -B build -DCMAKE_BUILD_TYPE=Release)
-          # A tag like v1.2.3 sets the version the DAW shows
+          # A tag like v1.2.3 sets the version every plugin shows in the DAW
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             ver="${GITHUB_REF_NAME#v}"
-            if [[ "$ver" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then args+=("-DSQUEEZE_VERSION=$ver"); fi
+            if [[ "$ver" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then args+=("-DLBAUDIO_VERSION=$ver"); fi
           fi
           # Universal binary: Apple Silicon + Intel
           if [[ "$RUNNER_OS" == "macOS" ]]; then args+=("-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64"); fi
@@ -67,43 +143,16 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: .github/scripts/macos-sign.sh
 
-      - name: Upload plugin
+      - name: Package
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then label="$GITHUB_REF_NAME"; else label="dev-${GITHUB_SHA::7}"; fi
+          .github/scripts/package.sh "$label"
+
+      - name: Upload zips
         uses: actions/upload-artifact@v6
         with:
-          name: Squeeze-${{ matrix.name }}
-          path: |
-            build/Squeeze_artefacts/Release/VST3
-            build/Squeeze_artefacts/Release/AU
-          if-no-files-found: error
-
-      # ---- Release packaging (tag builds only) --------------------------------
-      - name: Package (Windows)
-        if: startsWith(github.ref, 'refs/tags/v') && runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force dist | Out-Null
-          Compress-Archive -Path build/Squeeze_artefacts/Release/VST3/Squeeze.vst3, build/THIRD_PARTY_NOTICES.txt `
-            -DestinationPath "dist/Squeeze-$env:GITHUB_REF_NAME-Windows-VST3.zip"
-
-      - name: Package (macOS)
-        if: startsWith(github.ref, 'refs/tags/v') && runner.os == 'macOS'
-        run: |
-          mkdir -p dist stage
-          cp -R build/Squeeze_artefacts/Release/VST3/Squeeze.vst3 build/Squeeze_artefacts/Release/AU/Squeeze.component build/THIRD_PARTY_NOTICES.txt stage/
-          ditto -c -k stage "dist/Squeeze-${GITHUB_REF_NAME}-macOS-VST3-AU.zip"
-
-      - name: Package (Linux)
-        if: startsWith(github.ref, 'refs/tags/v') && runner.os == 'Linux'
-        run: |
-          mkdir -p dist
-          (cd build/Squeeze_artefacts/Release/VST3 && zip -r -y "$GITHUB_WORKSPACE/dist/Squeeze-${GITHUB_REF_NAME}-Linux-VST3.zip" Squeeze.vst3)
-          zip -j "dist/Squeeze-${GITHUB_REF_NAME}-Linux-VST3.zip" build/THIRD_PARTY_NOTICES.txt
-
-      - name: Upload release package
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: actions/upload-artifact@v6
-        with:
-          name: release-${{ matrix.name }}
+          name: LBAudio-${{ matrix.name }}
           path: dist/*.zip
           if-no-files-found: error
 
@@ -119,7 +168,7 @@ jobs:
 
       - uses: actions/download-artifact@v7
         with:
-          pattern: release-*
+          pattern: LBAudio-*
           path: dist
           merge-multiple: true
 
@@ -133,5 +182,5 @@ jobs:
             gh release upload "$GITHUB_REF_NAME" dist/*.zip --clobber -R "$GITHUB_REPOSITORY"
           else
             gh release create "$GITHUB_REF_NAME" dist/*.zip -R "$GITHUB_REPOSITORY" \
-              --title "Squeeze $GITHUB_REF_NAME" --notes-file .github/release-notes.md
+              --title "LBAudio $GITHUB_REF_NAME" --notes-file .github/release-notes.md
           fi
