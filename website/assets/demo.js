@@ -1,8 +1,9 @@
-// Before/after player: the original and the Squeeze version play in sync,
+// Before/after player: the original and the processed version play in sync,
 // so switching between them changes only the processing, never the position.
+// Data comes from assets/demo/<plugin>-data.js (window.LBAUDIO_DEMO); the Squeeze page uses SQUEEZE_DEMO.
 (function () {
   "use strict";
-  var D = window.SQUEEZE_DEMO;
+  var D = window.LBAUDIO_DEMO || window.SQUEEZE_DEMO;
   var root = document.getElementById("player");
   if (!D || !root) return;
 
@@ -20,7 +21,7 @@
   var timeEl = document.getElementById("time");
   var status = document.getElementById("player-status");
 
-  var current = "glue", showWet = true;
+  var current = tabs.length ? tabs[0].getAttribute("data-preset") : Object.keys(D.presets)[0], showWet = true;
   var ctx = null, buffers = {}, loading = {};
   var srcDry = null, srcWet = null, gDry = null, gWet = null;
   var playing = false, startedAt = 0, offset = 0, raf = 0;
@@ -81,7 +82,8 @@
   function load(name) {
     if (buffers[name]) return Promise.resolve(buffers[name]);
     if (loading[name]) return loading[name];
-    loading[name] = fetch(D.base + name + ".mp3")
+    var file = name === "dry" ? "dry" : (D.presets[name] && D.presets[name].file) || name;
+    loading[name] = fetch(D.base + file + ".mp3")
       .then(function (r) { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
       .then(function (data) {
         return new Promise(function (resolve, reject) { ctx.decodeAudioData(data, resolve, reject); });

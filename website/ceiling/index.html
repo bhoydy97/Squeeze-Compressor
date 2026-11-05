@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ceiling Limiter by LBAudio</title>
+  <meta name="description" content="Ceiling is a true-peak limiter plugin for Windows, macOS and Linux (VST3 and AU) with LUFS loudness metering (EBU R128), a gain reduction graph and 2 ms lookahead.">
+  <meta property="og:type" content="product">
+  <meta property="og:title" content="Ceiling Limiter by LBAudio">
+  <meta property="og:description" content="A true-peak limiter with LUFS metering built in. VST3 and AU for Windows, macOS and Linux.">
+  <meta property="og:url" content="https://lbaudio.co.uk/ceiling/">
+  <meta property="og:image" content="https://lbaudio.co.uk/assets/store/ceiling-social-1200x630.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:site_name" content="LBAudio">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://lbaudio.co.uk/assets/store/ceiling-social-1200x630.png">
+  <link rel="canonical" href="https://lbaudio.co.uk/ceiling/">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="../assets/fonts/archivo-var.woff" as="font" type="font/woff" crossorigin>
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="../index.html">LB<span>Audio</span></a>
+    <nav class="nav" aria-label="Main">
+      <a class="nav-link" href="../index.html#plugins">All plugins</a>
+      <a class="nav-link" href="#listen">Listen</a>
+      <a class="nav-link" href="#plugin">The plugin</a>
+      <a class="nav-link" href="#controls">Controls</a>
+      <a class="nav-link" href="#specs">Specs</a>
+      <a class="nav-link" href="#faq">FAQ</a>
+      <a class="btn btn-primary btn-small" data-buy="ceiling" href="#buy"><span data-buy-label>Buy</span></a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero">
+    <div class="wrap">
+      <div>
+        <p class="kicker">Limiter plugin &middot; VST3 &amp; AU</p>
+        <h1 class="wordmark">Ceiling<small>by LBAudio</small></h1>
+        <p class="lede">A true-peak limiter with loudness metering built in. Turn up Gain, set the ceiling, and nothing gets past it.</p>
+        <div class="cta" id="buy">
+          <a class="btn btn-primary" data-buy="ceiling" href="#buy"><span data-buy-label>Buy Ceiling</span><span data-price="ceiling">£15</span></a>
+          <a class="btn btn-ghost" href="#listen">Hear it</a>
+        </div>
+        <p class="vat-note">Instant download. Any local VAT is worked out at checkout. <a href="../bundle/">Or get all five plugins in the bundle</a>.</p>
+        <ul class="chips" aria-label="Formats and systems">
+          <li>VST3</li><li>AU</li><li>Windows</li><li>macOS</li><li>Linux</li><li>True peak</li><li>LUFS meter</li>
+        </ul>
+      </div>
+      <figure class="hero-shot">
+        <img src="../assets/ceiling-ui.png" width="1880" height="840" alt="The Ceiling limiter window: a scrolling graph of level and gain reduction against the ceiling line, Gain, Ceiling and Release knobs, a True Peak switch, loudness readouts and meters.">
+      </figure>
+    </div>
+  </section>
+
+  <section class="block" id="listen">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>Hear it on a real beat</h2>
+        <p>A beat by LBAudio, pushed into Ceiling at three loudness levels. Each version is then turned back down to the original's loudness, so you hear what the limiting does to the sound, not just the extra volume.</p>
+      </div>
+      <div class="player" id="player">
+        <div class="player-tabs" role="tablist" aria-label="Ceiling settings">
+          <button type="button" role="tab" data-preset="gentle" aria-selected="true">Gentle</button>
+          <button type="button" role="tab" data-preset="streaming" aria-selected="false">Streaming level</button>
+          <button type="button" role="tab" data-preset="loud" aria-selected="false">Loud master</button>
+        </div>
+        <p class="player-desc" id="player-desc">A few dB of limiting that only catches the loudest hits. The beat comes up without changing its feel.</p>
+        <p class="player-settings mono" id="player-settings"></p>
+        <div class="wave" id="wave" role="slider" tabindex="0" aria-label="Playback position">
+          <svg id="wave-svg" viewBox="0 0 960 140" preserveAspectRatio="none" aria-hidden="true">
+            <line class="w-axis" x1="0" y1="70" x2="960" y2="70"></line>
+          </svg>
+          <div class="playhead" id="playhead"></div>
+        </div>
+        <div class="player-controls">
+          <button type="button" class="play" id="play" aria-label="Play">
+            <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"></path></svg>
+            <svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z"></path></svg>
+            <span id="play-label" class="sr-only">Play</span>
+          </button>
+          <div class="ab" role="group" aria-label="Compare">
+            <button type="button" id="ab-dry" aria-pressed="false">Original</button>
+            <button type="button" id="ab-wet" aria-pressed="true">Ceiling</button>
+          </div>
+          <span class="time mono" id="time">0:00 / 0:45</span>
+        </div>
+        <p class="player-status" id="player-status" role="status"></p>
+        <div class="legend"><span class="lg-dry">Original</span><span class="lg-wet">Ceiling</span><span class="lg-note">Peak level, dB scale</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="plugin">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>Loud, with nothing over</h2>
+        <p>Gain in, ceiling out, and a readout of exactly how loud your master is.</p>
+      </div>
+      <div class="shot-notes shot-notes-solo">
+        <div>
+          <h3>Nothing gets past</h3>
+          <p>2 ms of lookahead brings the gain down before each peak arrives, so the output never goes over the ceiling, without clipping.</p>
+        </div>
+        <div>
+          <h3>True peak</h3>
+          <p>Catches the peaks between samples that clip in converters and MP3 and AAC encoding. Standard true-peak meters read at or under your ceiling.</p>
+        </div>
+        <div>
+          <h3>Loudness built in</h3>
+          <p>Momentary, short-term and integrated LUFS, plus the highest true peak, so you can hit a streaming target without another plugin.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="controls">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>The controls</h2>
+        <p>Three knobs and a switch. The graph shows the level going in and coming out, with the gain reduction in amber. Double-click any knob to reset it, or click a value and type one in.</p>
+      </div>
+      <table class="spec">
+        <thead><tr><th scope="col">Control</th><th scope="col">Range</th><th scope="col">What it does</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Gain</th><td class="range">0 to 24 dB</td><td class="what">Pushes the level into the limiter. More gain is louder, with more limiting.</td></tr>
+          <tr><th scope="row">Ceiling</th><td class="range">−12 to 0 dB</td><td class="what">The output never goes above this. −1 dB is a safe choice for streaming.</td></tr>
+          <tr><th scope="row">Release</th><td class="range">1 ms to 1 s</td><td class="what">How quickly the level recovers after a peak. Longer is smoother; shorter is louder.</td></tr>
+          <tr><th scope="row">True peak</th><td class="range">On / off</td><td class="what">Also catches peaks between samples. Leave it on for anything that will be streamed or encoded.</td></tr>
+          <tr><th scope="row">Loudness</th><td class="range">LUFS and dBTP</td><td class="what">Momentary (400 ms), short-term (3 s) and integrated loudness to EBU R128, plus the true-peak maximum. Reset restarts them.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="block" id="uses">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>Where to start</h2>
+        <p>Four starting points. Set these, then adjust by ear.</p>
+      </div>
+      <ul class="recipes">
+        <li>
+          <h3>Streaming master</h3>
+          <p class="settings">Ceiling −1 dB · true peak on · raise Gain until Integrated reads about −14 LUFS</p>
+          <p class="why">Around the level many streaming services play at, with room for their encoding.</p>
+        </li>
+        <li>
+          <h3>Loud master</h3>
+          <p class="settings">Ceiling −1 dB · release 40–80 ms · Gain to −10 to −8 LUFS</p>
+          <p class="why">Competitive loudness. Watch the amber gain reduction and back off if the drums lose their snap.</p>
+        </li>
+        <li>
+          <h3>Catch the peaks</h3>
+          <p class="settings">Ceiling −0.3 to −1 dB · Gain 0–3 dB</p>
+          <p class="why">A safety net on a mix bus or a single track: it only touches the loudest hits.</p>
+        </li>
+        <li>
+          <h3>Smoother</h3>
+          <p class="settings">Release 150–300 ms</p>
+          <p class="why">Longer release means less pumping on dense, bass-heavy mixes.</p>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="block" id="specs">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>Specs</h2>
+        <p>One download for each system. No iLok, no account and no activation.</p>
+      </div>
+      <dl class="specs">
+        <div><dt>Formats</dt><dd>VST3 on Windows, macOS and Linux. Audio Unit (AU) on macOS.</dd></div>
+        <div><dt>Windows</dt><dd>Windows 10 or later, 64-bit.</dd></div>
+        <div><dt>macOS</dt><dd>macOS 10.13 or later. Runs natively on Apple Silicon and Intel.</dd></div>
+        <div><dt>Linux</dt><dd>64-bit x86 (x86-64).</dd></div>
+        <div><dt>Hosts</dt><dd>Any DAW that loads VST3 or AU plugins, such as Ableton Live, FL Studio, Cubase, Reaper, Studio One, Bitwig and Logic Pro. Not available for Pro Tools (AAX).</dd></div>
+        <div><dt>Latency</dt><dd>2 ms plus 16 samples (<span class="mono">111 samples</span> at 48 kHz), reported to your DAW so it compensates automatically.</dd></div>
+        <div><dt>Lookahead</dt><dd>2 ms, with the gain fully in place before each peak.</dd></div>
+        <div><dt>True peak</dt><dd>8x interpolation, plus the ITU-R BS.1770 meter filter, so standard true-peak meters read at or under the ceiling.</dd></div>
+        <div><dt>Loudness</dt><dd>ITU-R BS.1770-4 / EBU R128: momentary, short-term and gated integrated LUFS.</dd></div>
+        <div><dt>Channels</dt><dd>Mono or stereo, stereo-linked.</dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <section class="block" id="faq">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>Questions</h2>
+        <p>Anything else? Email <a data-email href="mailto:support@lbaudio.co.uk">support@lbaudio.co.uk</a>.</p>
+      </div>
+      <div class="faq">
+        <div>
+          <h3>How do I install it?</h3>
+          <p>Unzip the download and copy <code>Ceiling.vst3</code> into your VST3 folder: <code>C:\Program Files\Common Files\VST3</code> on Windows or <code>~/Library/Audio/Plug-Ins/VST3</code> on a Mac. Logic users also copy <code>Ceiling.component</code> into <code>~/Library/Audio/Plug-Ins/Components</code>. Then rescan plugins in your DAW. The zip includes these steps in <code>INSTALL.txt</code>.</p>
+        </div>
+        <div>
+          <h3>How many computers can I use it on?</h3>
+          <p>All the computers you personally own or use. See the <a href="../licence.html">licence agreement</a> for the details.</p>
+        </div>
+        <div>
+          <h3>Can I use it on commercial releases?</h3>
+          <p>Yes. The music you make with Ceiling is entirely yours, with no royalties or credits owed.</p>
+        </div>
+        <div>
+          <h3>Do updates cost anything?</h3>
+          <p>No. Updates to Ceiling version 1 are free for everyone who bought it.</p>
+        </div>
+        <div>
+          <h3>What if it doesn't work on my system?</h3>
+          <p>Get in touch within 14 days of buying. If we can't get it working, you get a full refund. See the <a href="../refunds.html">refund policy</a>.</p>
+        </div>
+        <div>
+          <h3>Does it work in Pro Tools?</h3>
+          <p>Not yet. Pro Tools only loads AAX plugins, and Ceiling is VST3 and AU.</p>
+        </div>
+        <div>
+          <h3>Where should it go?</h3>
+          <p>Last on your master bus, after everything else. It's also handy on a single track or bus to tame stray peaks.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="closer">
+    <div class="wrap">
+      <div>
+        <h2>Ceiling</h2>
+        <p>VST3 &amp; AU for Windows, macOS and Linux. Instant download. <a href="../bundle/">Or get all five plugins in the bundle</a>.</p>
+      </div>
+      <a class="btn btn-primary" data-buy="ceiling" href="#buy"><span data-buy-label>Buy Ceiling</span><span data-price="ceiling">£15</span></a>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>&copy; 2026 LBAudio</span>
+    <nav aria-label="Legal">
+      <a href="../licence.html">Licence agreement</a>
+      <a href="../refunds.html">Refund policy</a>
+      <a href="../privacy.html">Privacy</a>
+      <a data-email href="mailto:support@lbaudio.co.uk">support@lbaudio.co.uk</a>
+    </nav>
+    <p class="trademarks">VST is a registered trademark of Steinberg Media Technologies GmbH. Apple, macOS, Logic Pro and Audio Units are trademarks of Apple Inc. Other product names are trademarks of their owners.</p>
+  </div>
+</footer>
+
+<script src="../assets/config.js"></script>
+<script src="../assets/site.js"></script>
+<script src="../assets/demo/ceiling-data.js"></script>
+<script src="../assets/demo.js"></script>
+</body>
+</html>

@@ -40,6 +40,28 @@
     document.head.appendChild(s);
   }
 
+  // "Out now" once a product has a Payhip code, "Coming soon" until then
+  document.querySelectorAll("[data-availability]").forEach(function (el) {
+    var live = !!(product(el.getAttribute("data-availability")).payhipProduct || "").trim();
+    el.textContent = live ? "Out now" : "Coming soon";
+    el.classList.toggle("pill-live", live);
+  });
+
+  // Bundle maths from the prices above, so the page never shows a stale saving
+  (function () {
+    var bundle = products.bundle;
+    if (!bundle || !bundle.price) return;
+    var symbol = bundle.price.replace(/[\d.,\s]/g, "");
+    function amount(p) { return parseFloat(String(p || "").replace(/[^\d.]/g, "")) || 0; }
+    function money(v) { return symbol + (Math.round(v) === v ? String(v) : v.toFixed(2)); }
+    var keys = bundle.includes || Object.keys(products).filter(function (k) { return k !== "bundle"; });
+    var total = keys.reduce(function (sum, k) { return sum + amount(product(k).price); }, 0);
+    var saving = total - amount(bundle.price);
+    document.querySelectorAll("[data-bundle-total]").forEach(function (el) { el.textContent = money(total); });
+    document.querySelectorAll("[data-saving-amount]").forEach(function (el) { el.textContent = money(saving); });
+    if (saving <= 0) document.querySelectorAll("[data-bundle-saving]").forEach(function (el) { el.hidden = true; });
+  })();
+
   document.querySelectorAll("[data-email]").forEach(function (el) {
     var email = (cfg.supportEmail || "").trim();
     if (email) {
