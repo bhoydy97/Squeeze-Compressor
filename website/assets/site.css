@@ -433,3 +433,15 @@ footer a:hover { color: var(--text); }
 .hero-product-flat img { border: 0; border-radius: 0; box-shadow: none; }
 .hero-product-caption { flex-wrap: wrap; }
 .price-table { max-width: 760px; }
+
+/* ---- Bundle offer ------------------------------------------------------------ */
+.promo {
+  display: flex; align-items: center; gap: 12px; margin-top: 22px; padding: 12px 16px; max-width: 46ch;
+  border: 1px solid rgba(255, 140, 66, .5); background: rgba(255, 140, 66, .09); border-radius: 12px; color: var(--text);
+}
+.promo[hidden] { display: none; }
+.promo-tag {
+  flex: none; font-family: var(--mono); font-size: 0.74rem; letter-spacing: 0.06em; text-transform: uppercase;
+  color: #2a1405; background: var(--amber); border-radius: 999px; padding: 3px 10px;
+}
+.promo strong, .promo-inline { color: var(--amber); }

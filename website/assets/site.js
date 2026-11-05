@@ -60,6 +60,10 @@
     document.querySelectorAll("[data-bundle-total]").forEach(function (el) { el.textContent = money(total); });
     document.querySelectorAll("[data-saving-amount]").forEach(function (el) { el.textContent = money(saving); });
     if (saving <= 0) document.querySelectorAll("[data-bundle-saving]").forEach(function (el) { el.hidden = true; });
+    // "Buy four, get one free" only while it's true: the saving covers even the dearest plugin
+    var dearest = keys.reduce(function (m, k) { return Math.max(m, amount(product(k).price)); }, 0);
+    var fourForFive = keys.length === 5 && saving + 0.001 >= dearest;
+    document.querySelectorAll("[data-promo-four]").forEach(function (el) { el.hidden = !fourForFive; });
   })();
 
   document.querySelectorAll("[data-email]").forEach(function (el) {
