@@ -245,9 +245,12 @@ void renderSnapshot (const juce::File& png, std::function<void (Harness&)> setup
 
 // Renders a plugin window as video frames: the editor, fed an audio file, snapshotted 'fps' times a second.
 //   <Name>Tests --ui-video <in.wav> <out-dir> <fps> <width-px> <start-s> <seconds> [Name=Value ...]
-// Writes <out-dir>/frame-00000.jpg ... and <out-dir>/audio.wav: the plugin's output over the same span,
-// latency-compensated. The file is played through once first (on a loop), so meters, graphs, reverb tails and
-// loudness readings are already running when the first frame is taken. Switches take on/off.
+// Writes <out-dir>/frame-00000.jpg ..., <out-dir>/audio.wav (the plugin's output over the same span,
+// latency-compensated) and <out-dir>/params.json (the displayed text of any automated parameter, per frame).
+// Meters, graphs, reverb tails and loudness readings are warmed up first: on the 12 s before the span, or for a
+// span near the start of the file, by playing the file through once on a loop. Switches take on/off.
+// Automation: "Name=Value@Seconds>Value@Seconds>..." moves a parameter through those values (seconds from the
+// start of the span), linearly along the knob's travel; choices and switches change at each point.
 template <typename Processor, typename Editor>
 std::optional<int> maybeUIVideo (int argc, char** argv)
 {
@@ -273,6 +276,14 @@ std::optional<int> maybeUIVideo (int argc, char** argv)
     reader->read (&audio, 0, n, 0, true, true);
 
     Processor proc;
+    struct Lane { juce::AudioProcessorParameter* param; std::vector<std::pair<double, float>> keys; juce::StringArray shown; };
+    std::vector<Lane> lanes;
+    auto toValue = [] (juce::AudioProcessorParameter* p, const juce::String& v)
+    {
+        if (v.equalsIgnoreCase ("on")) return 1.0f;
+        if (v.equalsIgnoreCase ("off")) return 0.0f;
+        return p->getValueForText (v);
+    };
     for (int i = 8; i < argc; ++i)
     {
         const juce::String arg (argv[i]);
@@ -282,9 +293,36 @@ std::optional<int> maybeUIVideo (int argc, char** argv)
         for (auto* p : proc.getParameters())
             if (p->getName (64).equalsIgnoreCase (name)) param = p;
         if (param == nullptr) { std::cerr << "unknown parameter: " << name << std::endl; return 1; }
-        const bool isSwitch = value.equalsIgnoreCase ("on") || value.equalsIgnoreCase ("off");
-        param->setValueNotifyingHost (isSwitch ? (value.equalsIgnoreCase ("on") ? 1.0f : 0.0f) : param->getValueForText (value));
+        if (value.contains ("@"))
+        {
+            Lane lane { param, {}, {} };
+            for (auto& key : juce::StringArray::fromTokens (value, ">", ""))
+                lane.keys.push_back ({ key.fromLastOccurrenceOf ("@", false, false).getDoubleValue(),
+                                       toValue (param, key.upToLastOccurrenceOf ("@", false, false).trim()) });
+            param->setValueNotifyingHost (lane.keys.front().second);
+            lanes.push_back (lane);
+        }
+        else
+        {
+            param->setValueNotifyingHost (toValue (param, value));
+        }
     }
+    auto automate = [&] (double t)
+    {
+        for (auto& lane : lanes)
+        {
+            const auto& k = lane.keys;
+            float v = k.front().second;
+            const bool stepped = lane.param->isDiscrete() || lane.param->isBoolean();
+            for (size_t j = 0; j < k.size(); ++j)
+            {
+                if (t >= k[j].first) v = k[j].second;
+                if (! stepped && j + 1 < k.size() && t >= k[j].first && t < k[j + 1].first)
+                    v = k[j].second + (k[j + 1].second - k[j].second) * (float) ((t - k[j].first) / (k[j + 1].first - k[j].first));
+            }
+            if (std::abs (lane.param->getValue() - v) > 1.0e-7f) lane.param->setValueNotifyingHost (v);
+        }
+    };
 
     const int spf = juce::roundToInt (sr / fps);
     proc.setRateAndBufferSizeDetails (sr, spf);
@@ -313,13 +351,17 @@ std::optional<int> maybeUIVideo (int argc, char** argv)
         }
     };
 
-    // The span starts in the second time round the file, so everything is warmed up by then.
+    // Warm up before the span: the 12 s leading into it, or (near the start of the file) once round the file
     outDir.createDirectory();
     Editor editor (proc);
     const float scale = (float) widthPx / (float) editor.getWidth();
-    const long long first = (long long) n + (long long) std::llround (startS * sr);
+    const double warm = 12.0;
+    const long long first = startS >= warm ? (long long) std::llround (startS * sr)
+                                           : (long long) n + (long long) std::llround (startS * sr);
     const long long last = first + (long long) std::llround (seconds * sr);
-    processChunk ((int) (first % spf), nullptr); // so the frames below fall exactly on 'first'
+    pos = startS >= warm ? first - (long long) std::llround (warm * sr) : 0;
+    automate (-1.0);
+    processChunk ((int) ((first - pos) % spf), nullptr); // so the frames below fall exactly on 'first'
     while (pos < first) { processChunk (spf, nullptr); editor.refreshFromProcessor(); }
 
     juce::AudioBuffer<float> out (2, 0);
@@ -329,10 +371,12 @@ std::optional<int> maybeUIVideo (int argc, char** argv)
     while (pos < last + latency + spf)
     {
         const bool inSpan = pos < last;
+        automate ((double) (pos - first) / sr);
         processChunk (spf, &out);
         editor.refreshFromProcessor();
         if (inSpan)
         {
+            for (auto& lane : lanes) lane.shown.add (lane.param->getText (lane.param->getValue(), 32));
             const auto image = editor.createComponentSnapshot (editor.getLocalBounds(), true, scale);
             auto file = outDir.getChildFile (juce::String::formatted ("frame-%05d.jpg", frame++));
             file.deleteFile();
@@ -353,6 +397,19 @@ std::optional<int> maybeUIVideo (int argc, char** argv)
                                                   .withBitsPerSample (32).withSampleFormat (juce::AudioFormatWriterOptions::SampleFormat::floatingPoint));
     if (writer == nullptr) { std::cerr << "cannot write audio" << std::endl; return 1; }
     writer->writeFromAudioSampleBuffer (aligned, 0, keepN);
+    {
+        auto* root = new juce::DynamicObject();
+        root->setProperty ("frames", frame);
+        auto* params = new juce::DynamicObject();
+        for (auto& lane : lanes)
+        {
+            juce::Array<juce::var> texts;
+            for (auto& t : lane.shown) texts.add (t);
+            params->setProperty (lane.param->getName (64), texts);
+        }
+        root->setProperty ("params", juce::var (params));
+        outDir.getChildFile ("params.json").replaceWithText (juce::JSON::toString (juce::var (root), true));
+    }
     std::cout << "frames " << frame << " (" << editor.getWidth() * scale << " px wide), latency " << latency
               << ", wrote " << outDir.getFullPathName() << std::endl;
     return 0;
