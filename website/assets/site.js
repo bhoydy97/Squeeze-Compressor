@@ -3,18 +3,27 @@
   var cfg = window.LBAUDIO_CONFIG || {};
 
   // ---- Settings from config.js -------------------------------------------
+  var products = cfg.products || {};
+  if (cfg.payhipProduct || cfg.price) {  // older single-product settings
+    products.squeeze = products.squeeze || { payhipProduct: cfg.payhipProduct, price: cfg.price };
+  }
+  function product(name) { return products[name || "squeeze"] || {}; }
+
   document.querySelectorAll("[data-price]").forEach(function (el) {
-    if (cfg.price) el.textContent = cfg.price;
+    var p = product(el.getAttribute("data-price"));
+    if (p.price) el.textContent = p.price;
     else el.hidden = true;
   });
 
-  var product = (cfg.payhipProduct || "").trim();
+  var anyLive = false;
   document.querySelectorAll("[data-buy]").forEach(function (a) {
+    var code = (product(a.getAttribute("data-buy")).payhipProduct || "").trim();
     var label = a.querySelector("[data-buy-label]");
-    if (product) {
-      a.href = "https://payhip.com/b/" + encodeURIComponent(product);
+    if (code) {
+      anyLive = true;
+      a.href = "https://payhip.com/b/" + encodeURIComponent(code);
       a.classList.add("payhip-buy-button");
-      a.setAttribute("data-product", product);
+      a.setAttribute("data-product", code);
       a.setAttribute("data-theme", "none");
     } else {
       a.removeAttribute("href");
@@ -24,7 +33,7 @@
       a.querySelectorAll("[data-price]").forEach(function (p) { p.hidden = true; });
     }
   });
-  if (product) {
+  if (anyLive) {
     var s = document.createElement("script");
     s.src = "https://payhip.com/payhip.js";
     s.async = true;
