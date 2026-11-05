@@ -1,6 +1,6 @@
 name: Build plugin
 
-# Builds on every push to main (README-only changes are skipped).
+# Builds on every push to main (README and website changes are skipped).
 # Pushing a version tag such as v1.0.1, or publishing a release with a new tag
 # on GitHub, also attaches ready-to-install zips to that release.
 
@@ -8,7 +8,7 @@ on:
   push:
     branches: [main]
     tags: ['v*']
-    paths-ignore: ['**.md', 'docs/**']
+    paths-ignore: ['**.md', 'docs/**', 'website/**']
   workflow_dispatch:
 
 permissions:
@@ -25,6 +25,10 @@ jobs:
           - { name: Windows, os: windows-latest }
           - { name: macOS,   os: macos-latest }
           - { name: Linux,   os: ubuntu-latest }
+
+    env:
+      # Mac signing switches itself on once the Apple secrets exist (see the launch guide).
+      HAS_MAC_SIGNING: ${{ secrets.MACOS_CERTIFICATE != '' }}
 
     steps:
       - uses: actions/checkout@v6
@@ -52,6 +56,16 @@ jobs:
 
       - name: Build
         run: cmake --build build --config Release --parallel
+
+      - name: Sign and notarize (macOS)
+        if: runner.os == 'macOS' && env.HAS_MAC_SIGNING == 'true'
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: .github/scripts/macos-sign.sh
 
       - name: Upload plugin
         uses: actions/upload-artifact@v6

@@ -98,6 +98,17 @@ Source/UI.h                 look and feel, transfer-curve display, meters
 tests/PluginTests.cpp       host-based test tool
 ```
 
+## Website
+
+The sales site lives in `website/`. It's plain HTML with no build step, hosted on Cloudflare Pages straight from this repo.
+Prices, the Payhip product code and the support email are set in `website/assets/config.js`.
+Product images for the store are in `website/assets/` (`cover-1600x900.png`, `square-1080.png`, `social-1200x630.png`).
+Changes to `website/` don't trigger plugin builds.
+
+## Mac signing
+
+Once the Apple secrets are added to the repo (`MACOS_CERTIFICATE`, `MACOS_CERTIFICATE_PASSWORD`, `APPLE_ID`, `APPLE_APP_PASSWORD`, `APPLE_TEAM_ID`), every macOS build is signed with your Developer ID and notarized by Apple by `.github/scripts/macos-sign.sh`. Without them the step is skipped.
+
 ## Plugin identity
 
 The name, company and IDs are set in `CMakeLists.txt`:
