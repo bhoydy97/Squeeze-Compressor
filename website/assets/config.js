@@ -5,11 +5,11 @@ window.LBAUDIO_CONFIG = {
   // Your Payhip product code: the letters after "payhip.com/b/" in your product link.
   // Example: for https://payhip.com/b/AbC12 put "AbC12".
   // While this is empty, the Buy buttons say "Coming soon".
-  payhipProduct: "",
+  payhipProduct: "m2aWH",
 
   // The price shown on the page. Leave empty to hide it.
-  price: "£19",
+  price: "£15",
 
   // The support email shown on the site and in the legal pages.
-  supportEmail: ""
+  supportEmail: "support@lbaudio.co.uk"
 };
