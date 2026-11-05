@@ -118,4 +118,20 @@ if(SQUEEZE_BUILD_TESTS)
             juce::juce_recommended_warning_flags)
 
     add_dependencies(SqueezeTests Squeeze_VST3)
+
+    # Renders audio files through the built VST3 (used for the website's demos)
+    juce_add_console_app(SqueezeRender PRODUCT_NAME "SqueezeRender")
+    target_sources(SqueezeRender PRIVATE tests/RenderDemo.cpp)
+    target_compile_definitions(SqueezeRender PRIVATE
+        JUCE_PLUGINHOST_VST3=1
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0)
+    target_link_libraries(SqueezeRender
+        PRIVATE
+            juce::juce_audio_formats
+            juce::juce_audio_processors
+        PUBLIC
+            juce::juce_recommended_config_flags
+            juce::juce_recommended_warning_flags)
+    add_dependencies(SqueezeRender Squeeze_VST3)
 endif()
