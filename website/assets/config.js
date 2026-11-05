@@ -10,11 +10,11 @@ window.LBAUDIO_CONFIG = {
   // Prices here are only what the website shows: set the real price in Payhip too.
   products: {
     squeeze: { payhipProduct: "m2aWH", price: "\u00a315" },
-    carve:   { payhipProduct: "",      price: "\u00a315" },
-    ember:   { payhipProduct: "",      price: "\u00a315" },
-    haze:    { payhipProduct: "",      price: "\u00a315" },
-    ceiling: { payhipProduct: "",      price: "\u00a315" },
+    carve:   { payhipProduct: "fbuws", price: "\u00a315" },
+    ember:   { payhipProduct: "JuUOz", price: "\u00a315" },
+    haze:    { payhipProduct: "meyHn", price: "\u00a315" },
+    ceiling: { payhipProduct: "drU5n", price: "\u00a315" },
     // The bundle's saving on the website is worked out from these prices automatically
-    bundle:  { payhipProduct: "",      price: "\u00a349", includes: ["squeeze", "carve", "ember", "haze", "ceiling"] }
+    bundle:  { payhipProduct: "z0NFa", price: "\u00a360", includes: ["squeeze", "carve", "ember", "haze", "ceiling"] }
   }
 };
