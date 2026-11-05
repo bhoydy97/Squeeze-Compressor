@@ -50,8 +50,9 @@ jobs:
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DLBAUDIO_BUILD_TESTS=ON -DLBAUDIO_LTO=OFF \
             -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
+      # A fixed job count: unlimited parallel compiles run the runner out of memory
       - name: Build
-        run: cmake --build build --parallel
+        run: cmake --build build --parallel 4
 
       - name: Run each plugin's test suite
         run: |
@@ -98,9 +99,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: Windows, os: windows-latest }
-          - { name: macOS,   os: macos-latest }
-          - { name: Linux,   os: ubuntu-latest }
+          - { name: Windows, os: windows-latest, jobs: 4 }
+          - { name: macOS,   os: macos-latest,   jobs: 3 }
+          - { name: Linux,   os: ubuntu-latest,  jobs: 4 }
 
     env:
       # Mac signing switches itself on once the Apple secrets exist (see the launch guide).
@@ -131,7 +132,7 @@ jobs:
           cmake "${args[@]}"
 
       - name: Build
-        run: cmake --build build --config Release --parallel
+        run: cmake --build build --config Release --parallel ${{ matrix.jobs }}
 
       - name: Sign and notarize (macOS)
         if: runner.os == 'macOS' && env.HAS_MAC_SIGNING == 'true'
