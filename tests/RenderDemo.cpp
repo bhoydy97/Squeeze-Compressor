@@ -1,9 +1,10 @@
-// SqueezeRender: runs an audio file through the built Squeeze VST3, exactly as a DAW would.
+// LBAudioRender: runs an audio file through a built LBAudio VST3, exactly as a DAW would.
 //
-//   SqueezeRender <Squeeze.vst3> <in.wav> <out.wav> "Threshold=-20" "Ratio=4" ...
+//   LBAudioRender <Plugin.vst3> <in.wav> <out.wav> "Threshold=-20" "Ratio=4" ...
 //
-// Parameters are set by name using the same text a user would type into the plugin.
-// "Auto Makeup" and "External Sidechain" take on/off. Output is 32-bit float WAV.
+// Parameters are set by name using the same text a user would type into the plugin; switches take
+// on/off. The plugin's reported latency is compensated, as a DAW does, so the output lines up with
+// the input sample for sample. Output is 32-bit float WAV.
 
 #include <juce_audio_formats/juce_audio_formats.h>
 #include <juce_audio_processors/juce_audio_processors.h>
@@ -14,7 +15,7 @@ int main (int argc, char** argv)
 
     if (argc < 4)
     {
-        std::cerr << "usage: SqueezeRender <Squeeze.vst3> <in.wav> <out.wav> [Name=Value ...]" << std::endl;
+        std::cerr << "usage: LBAudioRender <Plugin.vst3> <in.wav> <out.wav> [Name=Value ...]" << std::endl;
         return 2;
     }
 
@@ -81,18 +82,23 @@ int main (int argc, char** argv)
     plugin->processBlock (block, midi);
     plugin->reset();
 
-    juce::AudioBuffer<float> output (numChannels, numSamples);
-    for (int start = 0; start < numSamples; start += blockSize)
+    // Run 'latency' extra samples of silence through, then drop the first 'latency' samples of output
+    const int latency = juce::jmax (0, plugin->getLatencySamples());
+    const int total = numSamples + latency;
+    juce::AudioBuffer<float> output (numChannels, total);
+    for (int start = 0; start < total; start += blockSize)
     {
-        const int n = juce::jmin (blockSize, numSamples - start);
+        const int n = juce::jmin (blockSize, total - start);
         block.setSize (bufferChannels, n, false, false, true);
         block.clear();
+        const int fromInput = juce::jlimit (0, n, numSamples - start);
         for (int ch = 0; ch < numChannels; ++ch)
-            block.copyFrom (ch, 0, audio, ch, start, n);
+            if (fromInput > 0) block.copyFrom (ch, 0, audio, ch, start, fromInput);
         plugin->processBlock (block, midi);
         for (int ch = 0; ch < numChannels; ++ch)
             output.copyFrom (ch, start, block, ch, 0, n);
     }
+    std::cout << "latency: " << latency << " samples (compensated)" << std::endl;
     plugin->releaseResources();
 
     std::cout << "settings:";
@@ -109,7 +115,8 @@ int main (int argc, char** argv)
                                                    .withBitsPerSample (32)
                                                    .withSampleFormat (juce::AudioFormatWriterOptions::SampleFormat::floatingPoint));
     if (writer == nullptr) { std::cerr << "cannot write " << outFile.getFullPathName() << std::endl; return 1; }
-    writer->writeFromAudioSampleBuffer (output, 0, numSamples);
+    juce::AudioBuffer<float> aligned (output.getArrayOfWritePointers(), numChannels, latency, numSamples);
+    writer->writeFromAudioSampleBuffer (aligned, 0, numSamples);
     std::cout << "wrote " << outFile.getFullPathName() << std::endl;
     return 0;
 }
