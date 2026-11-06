@@ -59,15 +59,16 @@ void Vectorscope::paint (juce::Graphics& g)
     g.setFont (styledFont (11.0f, true, false, 0.3f));
     g.setColour (t.text);
     g.drawText ("WIDTH " + juce::String (juce::roundToInt (params.width * 100.0f)) + "%", top, juce::Justification::centredLeft);
-    if (spread::bassMonoOn (params))
-    {
-        g.setColour (t.accent);
-        g.drawText ("BASS MONO < " + juce::String (juce::roundToInt (params.bassMonoHz)) + " HZ", top, juce::Justification::centredRight);
-    }
+    // Mono check overrides everything else, so it takes the bass-mono label's place
     if (params.mono)
     {
         g.setColour (t.accent2);
-        g.drawText ("MONO CHECK", top, juce::Justification::centred);
+        g.drawText ("MONO CHECK", top, juce::Justification::centredRight);
+    }
+    else if (spread::bassMonoOn (params))
+    {
+        g.setColour (t.accent);
+        g.drawText ("BASS MONO < " + juce::String (juce::roundToInt (params.bassMonoHz)) + " HZ", top, juce::Justification::centredRight);
     }
 
     auto corrArea = area.removeFromBottom (40.0f);

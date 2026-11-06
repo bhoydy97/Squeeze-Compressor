@@ -244,7 +244,7 @@ void renderSnapshot (const juce::File& png, std::function<void (Harness&)> setup
 }
 
 // Renders a plugin window as video frames: the editor, fed an audio file, snapshotted 'fps' times a second.
-//   <Name>Tests --ui-video <in.wav> <out-dir> <fps> <width-px> <start-s> <seconds> [Name=Value ...]
+//   <Name>Tests --ui-video <in.wav> <out-dir> <fps> <width-px> <start-s> <seconds> [Name=Value ...] ["Host BPM=100"]
 // Writes <out-dir>/frame-00000.jpg ..., <out-dir>/audio.wav (the plugin's output over the same span,
 // latency-compensated) and <out-dir>/params.json (the displayed text of any automated parameter, per frame).
 // Meters, graphs, reverb tails and loudness readings are warmed up first: on the 12 s before the span, or for a
@@ -284,11 +284,27 @@ std::optional<int> maybeUIVideo (int argc, char** argv)
         if (v.equalsIgnoreCase ("off")) return 0.0f;
         return p->getValueForText (v);
     };
+    // "Host BPM=100" plays the role of a DAW transport: playing, at that tempo (tempo-synced plugins follow it)
+    struct HostTransport final : juce::AudioPlayHead
+    {
+        double bpm = 0.0, rate = 44100.0; long long sample = 0;
+        juce::Optional<PositionInfo> getPosition() const override
+        {
+            if (bpm <= 0.0) return {};
+            PositionInfo info;
+            info.setBpm (bpm);
+            info.setIsPlaying (true);
+            info.setTimeInSamples ((juce::int64) sample);
+            info.setTimeInSeconds ((double) sample / rate);
+            return info;
+        }
+    } transport;
     for (int i = 8; i < argc; ++i)
     {
         const juce::String arg (argv[i]);
         const auto name = arg.upToFirstOccurrenceOf ("=", false, false).trim();
         const auto value = arg.fromFirstOccurrenceOf ("=", false, false).trim();
+        if (name.equalsIgnoreCase ("Host BPM")) { transport.bpm = value.getDoubleValue(); continue; }
         juce::AudioProcessorParameter* param = nullptr;
         for (auto* p : proc.getParameters())
             if (p->getName (64).equalsIgnoreCase (name)) param = p;
@@ -325,6 +341,8 @@ std::optional<int> maybeUIVideo (int argc, char** argv)
     };
 
     const int spf = juce::roundToInt (sr / fps);
+    transport.rate = sr;
+    if (transport.bpm > 0.0) proc.setPlayHead (&transport);
     proc.setRateAndBufferSizeDetails (sr, spf);
     proc.prepareToPlay (sr, spf);
     juce::AudioBuffer<float> block (juce::jmax (2, proc.getTotalNumInputChannels(), proc.getTotalNumOutputChannels()), spf);
@@ -342,6 +360,7 @@ std::optional<int> maybeUIVideo (int argc, char** argv)
         for (int i = 0; i < len; ++i, ++pos)
             for (int ch = 0; ch < 2; ++ch)
                 block.setSample (ch, i, audio.getSample (ch, (int) (pos % n)));
+        transport.sample = pos - len;
         proc.processBlock (block, midi);
         if (keep != nullptr)
         {
