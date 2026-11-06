@@ -1,6 +1,7 @@
 // Before/after player: the original and the processed version play in sync,
 // so switching between them changes only the processing, never the position.
 // Data comes from assets/demo/<plugin>-data.js (window.LBAUDIO_DEMO); the Squeeze page uses SQUEEZE_DEMO.
+// A preset can bring its own original (dryFile, dry waveform, duration) when the page demos more than one clip.
 (function () {
   "use strict";
   var D = window.LBAUDIO_DEMO || window.SQUEEZE_DEMO;
@@ -27,6 +28,10 @@
   var playing = false, startedAt = 0, offset = 0, raf = 0;
   var duration = D.duration;
 
+  function fileOf(key) { return (D.presets[key] && D.presets[key].file) || key; }
+  function dryOf(key) { return (D.presets[key] && D.presets[key].dryFile) || D.dryFile || "dry"; }
+  function durOf(key) { return (D.presets[key] && D.presets[key].duration) || D.duration; }
+
   // ---- Waveform -------------------------------------------------------------
   var W = 960, H = 140, MID = H / 2, FLOOR = -48;
   function y(v) {
@@ -50,7 +55,6 @@
   var pathWet = document.createElementNS(NS, "path");
   pathDry.setAttribute("class", "w-dry");
   pathWet.setAttribute("class", "w-wet");
-  pathDry.setAttribute("d", shape(D.dry));
   svg.appendChild(pathWet);
   svg.appendChild(pathDry);
 
@@ -61,6 +65,9 @@
     desc.textContent = p.desc;
     settings.textContent = p.settings;
     pathWet.setAttribute("d", shape(p.wave));
+    pathDry.setAttribute("d", shape(p.dry || D.dry));
+    duration = (buffers[fileOf(current)] && buffers[fileOf(current)].duration) || durOf(current);
+    wave.setAttribute("aria-valuemax", String(Math.round(duration)));
     tabs.forEach(function (t) {
       var on = t.getAttribute("data-preset") === current;
       t.setAttribute("aria-selected", on ? "true" : "false");
@@ -79,17 +86,17 @@
   }
 
   // ---- Audio ----------------------------------------------------------------
-  function load(name) {
-    if (buffers[name]) return Promise.resolve(buffers[name]);
-    if (loading[name]) return loading[name];
-    var file = name === "dry" ? (D.dryFile || "dry") : (D.presets[name] && D.presets[name].file) || name;
-    loading[name] = fetch(D.base + file + ".mp3")
+  function load(file) {
+    if (buffers[file]) return Promise.resolve(buffers[file]);
+    if (loading[file]) return loading[file];
+    loading[file] = fetch(D.base + file + ".mp3")
       .then(function (r) { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
       .then(function (data) {
         return new Promise(function (resolve, reject) { ctx.decodeAudioData(data, resolve, reject); });
       })
-      .then(function (b) { buffers[name] = b; duration = b.duration; return b; });
-    return loading[name];
+      .then(function (b) { buffers[file] = b; return b; });
+    loading[file].catch(function () { delete loading[file]; });
+    return loading[file];
   }
 
   function position() {
@@ -112,8 +119,10 @@
     gWet.gain.value = showWet ? 1 : 0;
     srcDry = ctx.createBufferSource();
     srcWet = ctx.createBufferSource();
-    srcDry.buffer = buffers.dry;
-    srcWet.buffer = buffers[current];
+    srcDry.buffer = buffers[dryOf(current)];
+    srcWet.buffer = buffers[fileOf(current)];
+    duration = srcWet.buffer.duration;
+    off = Math.max(0, Math.min(off, duration - 0.05));
     srcDry.loop = srcWet.loop = true;
     srcDry.connect(gDry);
     srcWet.connect(gWet);
@@ -147,12 +156,15 @@
     if (ctx.resume) ctx.resume();
     status.textContent = "Loading audio…";
     root.classList.add("is-loading");
-    Promise.all([load("dry"), load(current)]).then(function () {
+    Promise.all([load(dryOf(current)), load(fileOf(current))]).then(function () {
       status.textContent = "";
       root.classList.remove("is-loading");
       startAt(offset);
       setPlaying(true);
-      Object.keys(D.presets).forEach(function (k) { load(k).catch(function () {}); });
+      Object.keys(D.presets).forEach(function (k) {
+        load(fileOf(k)).catch(function () {});
+        load(dryOf(k)).catch(function () {});
+      });
     }).catch(function () {
       root.classList.remove("is-loading");
       status.textContent = "The audio didn't load. Check your connection and try again.";
@@ -180,11 +192,18 @@
     t.addEventListener("click", function () {
       var name = t.getAttribute("data-preset");
       if (name === current) return;
+      // Same original: keep the place. A different clip: start it from the top.
+      var sameClip = dryOf(name) === dryOf(current);
+      var p = sameClip ? position() : 0;
       current = name;
       showPreset();
       if (playing) {
-        var p = position();
-        load(name).then(function () { if (current === name && playing) startAt(p); });
+        Promise.all([load(dryOf(name)), load(fileOf(name))]).then(function () {
+          if (current === name && playing) startAt(p);
+        });
+      } else {
+        offset = Math.min(p, duration - 0.05);
+        tick();
       }
     });
     t.addEventListener("keydown", function (e) {
