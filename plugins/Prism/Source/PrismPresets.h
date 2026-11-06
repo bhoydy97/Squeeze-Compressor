@@ -44,7 +44,7 @@ inline const std::vector<Preset>& factoryPresets()
         { "808 weight", "Beats", {
             { "split1", 100 },
             { "b1_threshold", -20 }, { "b1_ratio", 4 }, { "b1_attack", 30 }, { "b1_release", 120 }, { "b1_makeup", 3 },
-            { "b1_excite", 40 },
+            { "b1_excite", 60 },
             { "b2_threshold", -22 }, { "b2_ratio", 2 }, { "b2_attack", 20 }, { "b2_release", 120 } } },
         { "Punchy drums", "Beats", {
             { "split1", 100 }, { "split2", 1200 }, { "split3", 7000 },

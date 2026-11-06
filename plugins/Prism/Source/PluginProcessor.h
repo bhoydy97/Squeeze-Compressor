@@ -93,8 +93,8 @@ private:
     std::array<squeeze::Compressor, prism::numBands> compressors;
     std::array<juce::AudioBuffer<float>, prism::numBands> bandBuffers;
     juce::AudioBuffer<float> dryBuffer;
-    std::array<std::array<double, 2>, prism::numBands> dcX1 {}, dcY1 {}; // DC blockers on the exciters' harmonics
-    double dcR = 0.9999;
+    std::array<prism::Exciter, prism::numBands> exciters;
+    double exciteAttack = 0.0, exciteRelease = 0.0;
 
     // Smoothed values
     float inGain = 1.0f, outGain = 1.0f, mix = 1.0f, smoothCoeff = 0.001f;

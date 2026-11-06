@@ -109,7 +109,8 @@ void PrismAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     for (auto& c : compressors) c.prepare (osFs, 2);
 
     smoothCoeff = 1.0f - (float) std::exp (-1.0 / (0.02 * fs));
-    dcR = std::exp (-2.0 * lbaudio::dsp::pi * 10.0 / osFs);
+    exciteAttack = std::exp (-1.0 / (prism::exciteAttackS * osFs));
+    exciteRelease = std::exp (-1.0 / (prism::exciteReleaseS * osFs));
 
     const auto p = currentParams();
     inGain = juce::Decibels::decibelsToGain (p.inputDb);
@@ -125,8 +126,7 @@ void PrismAudioProcessor::reset()
     if (oversampler) oversampler->reset();
     for (auto& x : crossover) x.reset();
     for (auto& c : compressors) c.reset();
-    for (auto& a : dcX1) a.fill (0.0);
-    for (auto& a : dcY1) a.fill (0.0);
+    for (auto& e : exciters) e.reset();
 }
 
 bool PrismAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -160,6 +160,8 @@ void PrismAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
     {
         currentSplits = next;
         for (auto& x : crossover) x.set (currentSplits, osFs);
+        const float lowEdges[prism::numBands] = { 20.0f, currentSplits.low, currentSplits.mid, currentSplits.high };
+        for (int b = 0; b < prism::numBands; ++b) exciters[(size_t) b].setLowEdge (lowEdges[b], osFs);
     }
 
     for (int b = 0; b < prism::numBands; ++b)
@@ -225,30 +227,33 @@ void PrismAudioProcessor::processChunk (float* const* io, int channels, int n, c
         lbaudio::ui::storeMax (meterReduction[(size_t) b], stats.maxGainReductionDb);
 
         const float target = bp.excite;
+        auto& ex = exciters[(size_t) b];
         if (target > 0.0f || excite[(size_t) b] > 1.0e-4f)
         {
             float e = excite[(size_t) b];
-            for (int ch = 0; ch < channels; ++ch)
+            float* x[2] = { buf.getWritePointer (0), buf.getWritePointer (channels > 1 ? 1 : 0) };
+            double env = ex.env;
+            for (int i = 0; i < upN; ++i)
             {
-                float* x = buf.getWritePointer (ch);
-                double x1 = dcX1[(size_t) b][(size_t) ch], y1 = dcY1[(size_t) b][(size_t) ch];
-                e = excite[(size_t) b];
-                for (int i = 0; i < upN; ++i)
+                e += (target - e) * osSmooth;
+                float level = 0.0f;
+                for (int ch = 0; ch < channels; ++ch) level = juce::jmax (level, std::abs (x[ch][i]));
+                env = level + (level > env ? exciteAttack : exciteRelease) * (env - level);
+                const float ref = juce::jmax ((float) env, prism::exciteFloor), mixAmount = prism::exciteMix (e);
+                for (int ch = 0; ch < channels; ++ch)
                 {
-                    e += (target - e) * osSmooth;
-                    const double h = prism::harmonics (x[i], prism::exciteDrive (e));
-                    const double y = h - x1 + dcR * y1; // the harmonics' DC (even ones bring some) is taken out
-                    x1 = h; y1 = y;
-                    x[i] += prism::exciteMix (e) * (float) y;
+                    const float h = ref * prism::exciteHarmonics (x[ch][i] / ref);
+                    x[ch][i] += mixAmount * ex.highPass[(size_t) ch].process (h);
                 }
-                dcX1[(size_t) b][(size_t) ch] = x1;
-                dcY1[(size_t) b][(size_t) ch] = std::abs (y1) < 1.0e-20 ? 0.0 : y1;
             }
+            ex.env = env < 1.0e-12 ? 0.0 : env;
+            for (auto& f : ex.highPass) f.snapDenormals();
             excite[(size_t) b] = e;
         }
         else
         {
             excite[(size_t) b] = target;
+            ex.reset();
         }
     }
 

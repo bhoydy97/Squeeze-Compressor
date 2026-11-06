@@ -146,6 +146,24 @@ void runSuite (juce::AudioProcessor& proc)
         check (h2 > -45.0f && h3 > -45.0f, "Low Excite 100 %: a 60 Hz tone gains its 2nd and 3rd harmonics",
                "2nd " + fmt (h2, 1) + ", 3rd " + fmt (h3, 1) + " dB");
     }
+    defaults (proc); h.set ("High Mid Excite", "50"); h.apply();
+    {
+        // The exciter follows the band's level, so a quiet band gets the same colour as a loud one
+        auto ratios = [&] (float inDb)
+        {
+            const auto out = h.run ((int) sampleRate, sine (inDb, 2000.0f));
+            const float f = toneDb (out, settle, out.size(), 2000.0);
+            return std::make_pair (toneDb (out, settle, out.size(), 4000.0) - f, toneDb (out, settle, out.size(), 6000.0) - f);
+        };
+        const auto loud = ratios (-6.0f), quiet = ratios (-40.0f);
+        const float diff = std::max (std::abs (loud.first - quiet.first), std::abs (loud.second - quiet.second));
+        check (diff < 1.0f && loud.second > -30.0f && loud.second < -18.0f, "High Mid Excite 50 %: the same harmonics at -6 dB and -40 dB",
+               "3rd " + fmt (loud.second, 1) + " / " + fmt (quiet.second, 1) + " dB, 2nd " + fmt (loud.first, 1) + " / " + fmt (quiet.first, 1) + " dB under the tone");
+        h.apply();
+        const auto out = h.run ((int) sampleRate, sine (-6.0f, 2000.0f));
+        const float level = toneDb (out, settle, out.size(), 2000.0) + 6.0f;
+        check (std::abs (level) < 0.3f, "...and the tone itself stays at its level", fmt (level) + " dB");
+    }
     defaults (proc); h.set ("High Excite", "100"); h.set ("High Mid Excite", "100"); h.apply();
     {
         const auto out = h.run ((int) sampleRate, sine (-12.0f, 60.0f));
@@ -306,6 +324,6 @@ int main (int argc, char** argv)
             renderSnapshot<PrismAudioProcessor, PrismAudioProcessorEditor> (png, [] (Harness& h)
             {
                 h.proc.setCurrentProgram (1); // Mix glue
-            }, beat (-5.0f), 90);
+            }, beat (-7.0f), 90);
         });
 }

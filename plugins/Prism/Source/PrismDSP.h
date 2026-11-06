@@ -12,9 +12,11 @@
 //                -> high half -> AP(low) -> LR(high) -> [High Mid, High]
 //
 // Compressor: Squeeze's (feed-forward, soft knee, stereo-linked peak detection).
-// Exciter: adds the harmonics of a curve with a slope of 1 at zero (Ember's Tube curve, so even and odd
-// harmonics) on top of the band; the fundamental is left where it was. Only harmonics are added, so a band's
-// level barely moves, and each band's harmonics are generated from that band alone.
+// Exciter: each band, scaled by its own envelope to a steady level, goes through Ember's Tube curve (even and
+// odd harmonics); what the curve adds, minus its fundamental, is scaled back and added to the band. So the
+// harmonics sit at the same distance below the band whether it's loud or quiet, the band's own level
+// doesn't move, and each band's harmonics are made from that band alone. They're high-passed at the band's
+// lower edge, so nothing the envelope does can thump below the band.
 
 #include <LBAudio/Biquad.h>
 #include "../../Squeeze/Source/CompressorDSP.h"
@@ -145,12 +147,46 @@ inline float tube (float x) noexcept
     return (std::tanh (x + tubeBias) - tb) * norm;
 }
 
-// Excite 0..1: drive into the curve rises to +16 dB, and the harmonics are added at up to twice their level.
-inline float exciteDrive (float amount) noexcept { return 1.0f + 5.3f * amount; }
-inline float exciteMix (float amount) noexcept { return 2.0f * amount; }
+constexpr float exciteDrive = 2.0f;           // into the curve, at the band's peak level
+constexpr float exciteFloor = 0.001f;          // -60 dB: quieter than this, a band isn't lifted to full level
+constexpr double exciteAttackS = 0.001, exciteReleaseS = 0.12;
 
-// The harmonics only: the curve minus its linear part.
-inline float harmonics (float x, float drive) noexcept { return tube (x * drive) / drive - x; }
+// How much of the fundamental the curve takes away from a full-level sine, put back so only harmonics are added
+inline float exciteFundamental() noexcept
+{
+    static const float c = []
+    {
+        double s = 0.0;
+        constexpr int n = 4096;
+        for (int i = 0; i < n; ++i)
+        {
+            const double ph = 2.0 * lbaudio::dsp::pi * i / n, u = std::sin (ph);
+            s += (tube ((float) u * exciteDrive) / exciteDrive - u) * u;
+        }
+        return (float) (-2.0 * s / n);
+    }();
+    return c;
+}
+
+// The harmonics of a band scaled to peak at about 1
+inline float exciteHarmonics (float u) noexcept { return tube (u * exciteDrive) / exciteDrive - u + exciteFundamental() * u; }
+
+// Excite 0..1: at 100 % the 3rd harmonic of a steady tone sits about 17 dB under it and the 2nd about 22 dB under
+inline float exciteMix (float amount) noexcept { return 1.5f * amount; }
+
+// One band's exciter: its envelope (stereo-linked) and the high-pass on its harmonics, per channel
+struct Exciter
+{
+    double env = 0.0;
+    std::array<lbaudio::dsp::Biquad, 2> highPass;
+
+    void reset() noexcept { env = 0.0; for (auto& f : highPass) f.reset(); }
+    void setLowEdge (double hz, double fs)
+    {
+        const auto c = lbaudio::dsp::design (lbaudio::dsp::Shape::HighPass, std::max (20.0, hz), 0.0, butterworthQ, fs);
+        for (auto& f : highPass) f.c = c;
+    }
+};
 
 //==============================================================================
 struct BandParams
