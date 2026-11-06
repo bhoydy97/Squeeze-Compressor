@@ -802,3 +802,28 @@ footer a:hover { color: var(--text); }
   --teal: #5ad1c3; --amber: #ff8c42; --well: #12151a; --axis: #232731; --on-accent: #07211e; --accent-hover: #77ddd1;
   color: var(--text);
 }
+
+/* Site theme, take 2: ink instead of cobalt for the accent, and a brushed-alloy sheen behind everything */
+.site {
+  --teal: #131519; --amber: #131519; --accent-hover: #3a3f48; --on-accent: #ffffff;
+  --panel: rgba(255, 255, 255, .55);
+}
+body.site {
+  background-color: #d2d6dc;
+  background-image:
+    linear-gradient(112deg, rgba(255, 255, 255, 0) 38%, rgba(255, 255, 255, .55) 50%, rgba(255, 255, 255, 0) 62%),
+    radial-gradient(1100px 760px at 95% -140px, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0) 70%),
+    radial-gradient(1000px 900px at -10% 700px, rgba(230, 200, 172, .9), rgba(230, 200, 172, 0) 70%),
+    radial-gradient(1100px 900px at 108% 1600px, rgba(236, 214, 196, .7), rgba(236, 214, 196, 0) 70%),
+    linear-gradient(180deg, #eef0f2 0%, #dde0e4 30%, #d0d4da 65%, #c6cbd2 100%);
+  background-size: 100% 1100px, auto, auto, auto, auto;
+  background-repeat: no-repeat;
+}
+.site .top { background: rgba(238, 240, 242, .72); }
+.site .brand span { color: #5d636d; }
+.site .tag { background: var(--text); }
+.site a:not(.btn):not(.unit):not(.rack-bundle):not(.brand):not(.nav-link):not(.card-link) { text-decoration-thickness: 1px; }
+.site .rack-save, .site .deal-save { color: var(--text); }
+.site .rack-bundle { backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.site .legal .summary { backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.site .promo-tag { color: #ffffff; }
