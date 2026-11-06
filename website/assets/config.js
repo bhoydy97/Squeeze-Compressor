@@ -20,6 +20,8 @@ window.LBAUDIO_CONFIG = {
     spread:  { payhipProduct: "zEZPS", price: "\u00a315" },
     snap:    { payhipProduct: "MVxo4", price: "\u00a315" },
     orbit:   { payhipProduct: "WnV52", price: "\u00a315" },
+    // Multiband. "Coming soon" until its Payhip code is in.
+    prism:   { payhipProduct: "", price: "\u00a315" },
     // Bundles. Their savings on the website are worked out from the prices above automatically.
     // "bundle" is the core 5 (its Payhip code stays the same).
     bundle:   { payhipProduct: "z0NFa", price: "\u00a360", includes: ["squeeze", "carve", "ember", "haze", "ceiling"] },
