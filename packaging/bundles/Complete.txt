@@ -1,4 +1,4 @@
-# The complete bundle: every plugin, in the LBAudio-Complete-Bundle zip, one per line.
+# The complete bundle: the core 5 and the FX 5, in the LBAudio-Complete-Bundle zip, one per line.
 Squeeze
 Carve
 Ember
@@ -9,4 +9,3 @@ Hush
 Spread
 Snap
 Orbit
-Prism

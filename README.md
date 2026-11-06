@@ -177,7 +177,7 @@ Linkwitz-Riley 24 dB/oct crossovers with all-pass compensation, so with nothing 
 ## Getting the plugins
 
 ### Option A: download a release
-Open the repository's **Releases** page. Each release has a zip per plugin per system, plus a zip per bundle per system: `LBAudio-Core5-Bundle-…` (Squeeze, Carve, Ember, Haze, Ceiling), `LBAudio-FX5-Bundle-…` (Drift, Hush, Spread, Snap, Orbit) and `LBAudio-Complete-Bundle-…` (every plugin). Each bundle's contents are listed in `packaging/bundles/`. Installation steps are listed under each release and in the `INSTALL.txt` inside every zip.
+Open the repository's **Releases** page. Each release has a zip per plugin per system, plus a zip per bundle per system: `LBAudio-Core5-Bundle-…` (Squeeze, Carve, Ember, Haze, Ceiling), `LBAudio-FX5-Bundle-…` (Drift, Hush, Spread, Snap, Orbit) and `LBAudio-Complete-Bundle-…` (the core 5 and the FX 5). Prism is sold on its own, in no bundle. Each bundle's contents are listed in `packaging/bundles/`. Installation steps are listed under each release and in the `INSTALL.txt` inside every zip.
 
 ### Option B: build them yourself
 You need **CMake 3.22+**, **Git** and a C++17 compiler:
