@@ -1,6 +1,6 @@
 # LBAudio plugins
 
-Ten mixing and mastering plugins by LBAudio, built with [JUCE 8](https://juce.com).
+Mixing, mastering and effects plugins by LBAudio, built with [JUCE 8](https://juce.com).
 Each builds as **VST3** on Windows, macOS and Linux, and also as **Audio Unit** on macOS (for Logic / GarageBand).
 
 | | Plugin | What it is |
@@ -15,8 +15,9 @@ Each builds as **VST3** on Windows, macOS and Linux, and also as **Audio Unit** 
 | ![](docs/spread.png) | **Spread** | Stereo width with bass mono, a mono check and a vectorscope |
 | ![](docs/snap.png) | **Snap** | Transient shaper: level-independent attack and sustain |
 | ![](docs/orbit.png) | **Orbit** | Stereo chorus with up to four voices, shown orbiting on screen |
+| ![](docs/prism.png) | **Prism** | Four-band compressor with an exciter in every band, factory presets and your own |
 
-The first five share the house look; Drift, Hush, Spread, Snap and Orbit each have their own (themes in `shared/LBAudio/UI.h`).
+The first five share the house look; Drift, Hush, Spread, Snap, Orbit and Prism each have their own (themes in `shared/LBAudio/UI.h`).
 All of them: double-click a knob to reset it; click a value to type one in (`1.2 s`, `250 ms`, `4k`, `off` all work).
 
 ## The plugins
@@ -155,10 +156,28 @@ Envelope followers compared in dB, so a hit is shaped the same at any level and 
 
 At Width 0 a mono input stays mono. Mono in, stereo out works; zero latency.
 
+### Prism (multiband compressor and exciter)
+
+Four bands (Low, Low Mid, High Mid, High), each with its own compressor and exciter.
+
+| Control | Range | What it does |
+|---|---|---|
+| Low / Mid / High Split | 40 … 600 Hz / 250 Hz … 5 kHz / 1.5 … 16 kHz | Where the bands meet (or drag the handles on the spectrum) |
+| Threshold (per band) | −60 … 0 dB | Level above which that band is compressed (6 dB soft knee) |
+| Ratio (per band) | 1:1 … 20:1 | How hard |
+| Attack / Release (per band) | 0.1 … 200 ms / 5 ms … 2 s | How fast it clamps down and lets go |
+| Makeup (per band) | −12 … +24 dB | That band's level after compression |
+| Excite (per band) | 0 … 100 % | Adds harmonics made from that band only: air from the highs, weight from the lows |
+| Solo / Bypass (per band) | on/off | Hear one band (or several); leave a band untouched |
+| Input / Output | −24 … +24 dB | Levels in and out |
+| Mix | 0 … 100 % | Dry/wet (the dry path is phase-matched to the bands, so blends stay flat) |
+
+Linkwitz-Riley 24 dB/oct crossovers with all-pass compensation, so with nothing set the bands add back up to a flat response. Runs 4x oversampled so the exciters' harmonics don't alias; the latency is reported to the DAW. The preset menu has factory presets in categories (mix bus, beats, vocals, instruments, mastering) and your own: **SAVE** writes a `.prismpreset` file to `LBAudio/Prism/Presets` in your user application data folder (`~/Library/Application Support/…` on macOS, `%APPDATA%\…` on Windows, `~/.config/…` on Linux). Factory presets also show up as the DAW's programs.
+
 ## Getting the plugins
 
 ### Option A: download a release
-Open the repository's **Releases** page. Each release has a zip per plugin per system, plus a zip per bundle per system: `LBAudio-Core5-Bundle-…` (Squeeze, Carve, Ember, Haze, Ceiling), `LBAudio-FX5-Bundle-…` (Drift, Hush, Spread, Snap, Orbit) and `LBAudio-Complete-Bundle-…` (all ten). Each bundle's contents are listed in `packaging/bundles/`. Installation steps are listed under each release and in the `INSTALL.txt` inside every zip.
+Open the repository's **Releases** page. Each release has a zip per plugin per system, plus a zip per bundle per system: `LBAudio-Core5-Bundle-…` (Squeeze, Carve, Ember, Haze, Ceiling), `LBAudio-FX5-Bundle-…` (Drift, Hush, Spread, Snap, Orbit) and `LBAudio-Complete-Bundle-…` (every plugin). Each bundle's contents are listed in `packaging/bundles/`. Installation steps are listed under each release and in the `INSTALL.txt` inside every zip.
 
 ### Option B: build them yourself
 You need **CMake 3.22+**, **Git** and a C++17 compiler:
@@ -190,7 +209,7 @@ Options for the first command:
 ## Publishing a new release
 
 Create a release on GitHub (**Releases → Draft a new release**), type a new tag such as `v1.1.0`, and publish it.
-About 40 minutes later, 39 zips are attached to it automatically: each of the ten plugins for Windows, macOS and Linux, plus the three bundles for each system.
+About 40 minutes later, the zips are attached to it automatically: each plugin for Windows, macOS and Linux, plus the three bundles for each system.
 The tag's number becomes the version every plugin shows in your DAW, so use the `vMAJOR.MINOR.PATCH` format.
 
 Every push to `main` builds the plugins on Linux and runs all the tests and pluginval (see the **Actions** tab). The Windows and Mac builds only run for release tags, or when you start the workflow by hand (**Actions → Build plugins → Run workflow**), which keeps GitHub Actions minutes low. A hand-started run puts the zips in that run's *Artifacts* section.
@@ -230,8 +249,9 @@ Each plugin has a test tool that loads the built VST3 the way a DAW does, then r
 - **Spread:** neutral passthrough, width 0/200 %, bass mono (low side removed, highs and centred bass untouched), mono check, balance law, correlation meter
 - **Snap:** bit-exact when neutral, steady tones untouched, attack shapes fronts not tails, sustain shapes tails not fronts, level independence, mix
 - **Orbit:** bit-exact dry mix, a still voice is an exact delay, depth spreads a pure tone, width 0 stays mono, level with 1-4 voices, tone filter against its maths, stability at 70 % feedback
+- **Prism:** oversampling latency, the bands sum flat, Mix blends in phase, band isolation, each band's compressor against its maths, exciter harmonics made from their own band only and not aliased, solo and bypass, input/output, crossed splits kept in order, every factory preset loads and stays sane, state recall, user presets
 
-All ten also pass [pluginval](https://github.com/Tracktion/pluginval) at strictness level 10.
+All of them also pass [pluginval](https://github.com/Tracktion/pluginval) at strictness level 10.
 
 ## Code layout
 
@@ -280,6 +300,7 @@ All plugins share company **LBAudio**, manufacturer code `LBau`, and bundle IDs 
 | Spread | `Spr1` | Fx / Spatial |
 | Snap | `Snp1` | Fx / Dynamics |
 | Orbit | `Orb1` | Fx / Modulation |
+| Prism | `Prm1` | Fx / Dynamics |
 
 DAWs recognise a plugin by its manufacturer and plugin codes. Don't change them once people own a copy, or their saved sessions won't find it.
 
