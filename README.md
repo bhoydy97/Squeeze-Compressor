@@ -158,7 +158,7 @@ At Width 0 a mono input stays mono. Mono in, stereo out works; zero latency.
 ## Getting the plugins
 
 ### Option A: download a release
-Open the repository's **Releases** page. Each release has a zip per plugin per system, plus `LBAudio-Bundle-…` zips with the five plugins sold as the bundle (listed in `packaging/bundle-plugins.txt`). Installation steps are listed under each release and in the `INSTALL.txt` inside every zip.
+Open the repository's **Releases** page. Each release has a zip per plugin per system, plus a zip per bundle per system: `LBAudio-Core5-Bundle-…` (Squeeze, Carve, Ember, Haze, Ceiling), `LBAudio-FX5-Bundle-…` (Drift, Hush, Spread, Snap, Orbit) and `LBAudio-Complete-Bundle-…` (all ten). Each bundle's contents are listed in `packaging/bundles/`. Installation steps are listed under each release and in the `INSTALL.txt` inside every zip.
 
 ### Option B: build them yourself
 You need **CMake 3.22+**, **Git** and a C++17 compiler:
@@ -190,7 +190,7 @@ Options for the first command:
 ## Publishing a new release
 
 Create a release on GitHub (**Releases → Draft a new release**), type a new tag such as `v1.1.0`, and publish it.
-About 15 minutes later, 18 zips are attached to it automatically: each of the five plugins for Windows, macOS and Linux, plus the bundle for each system.
+About 40 minutes later, 39 zips are attached to it automatically: each of the ten plugins for Windows, macOS and Linux, plus the three bundles for each system.
 The tag's number becomes the version every plugin shows in your DAW, so use the `vMAJOR.MINOR.PATCH` format.
 
 Every push to `main` builds the plugins on Linux and runs all the tests and pluginval (see the **Actions** tab). The Windows and Mac builds only run for release tags, or when you start the workflow by hand (**Actions → Build plugins → Run workflow**), which keeps GitHub Actions minutes low. A hand-started run puts the zips in that run's *Artifacts* section.

@@ -20,7 +20,11 @@ window.LBAUDIO_CONFIG = {
     spread:  { payhipProduct: "", price: "\u00a315" },
     snap:    { payhipProduct: "", price: "\u00a315" },
     orbit:   { payhipProduct: "", price: "\u00a315" },
-    // The bundle's saving on the website is worked out from these prices automatically
-    bundle:  { payhipProduct: "z0NFa", price: "\u00a360", includes: ["squeeze", "carve", "ember", "haze", "ceiling"] }
+    // Bundles. Their savings on the website are worked out from the prices above automatically.
+    // "bundle" is the core 5 (its Payhip code stays the same).
+    bundle:   { payhipProduct: "z0NFa", price: "\u00a360", includes: ["squeeze", "carve", "ember", "haze", "ceiling"] },
+    fxbundle: { payhipProduct: "", price: "\u00a360", includes: ["drift", "hush", "spread", "snap", "orbit"] },
+    complete: { payhipProduct: "", price: "\u00a3110",
+                includes: ["squeeze", "carve", "ember", "haze", "ceiling", "drift", "hush", "spread", "snap", "orbit"] }
   }
 };

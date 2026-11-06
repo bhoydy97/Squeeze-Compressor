@@ -47,23 +47,33 @@
     el.classList.toggle("pill-live", live);
   });
 
-  // Bundle maths from the prices above, so the page never shows a stale saving
+  // Bundle maths from the prices above, so a page never shows a stale saving. Any product with an
+  // "includes" list is a bundle; elements name theirs, e.g. data-saving-amount="fxbundle" ("bundle" if blank).
   (function () {
-    var bundle = products.bundle;
-    if (!bundle || !bundle.price) return;
-    var symbol = bundle.price.replace(/[\d.,\s]/g, "");
     function amount(p) { return parseFloat(String(p || "").replace(/[^\d.]/g, "")) || 0; }
-    function money(v) { return symbol + (Math.round(v) === v ? String(v) : v.toFixed(2)); }
-    var keys = bundle.includes || Object.keys(products).filter(function (k) { return k !== "bundle"; });
-    var total = keys.reduce(function (sum, k) { return sum + amount(product(k).price); }, 0);
-    var saving = total - amount(bundle.price);
-    document.querySelectorAll("[data-bundle-total]").forEach(function (el) { el.textContent = money(total); });
-    document.querySelectorAll("[data-saving-amount]").forEach(function (el) { el.textContent = money(saving); });
-    if (saving <= 0) document.querySelectorAll("[data-bundle-saving]").forEach(function (el) { el.hidden = true; });
-    // "Buy four, get one free" only while it's true: the saving covers even the dearest plugin
-    var dearest = keys.reduce(function (m, k) { return Math.max(m, amount(product(k).price)); }, 0);
-    var fourForFive = keys.length === 5 && saving + 0.001 >= dearest;
-    document.querySelectorAll("[data-promo-four]").forEach(function (el) { el.hidden = !fourForFive; });
+    function maths(key) {
+      var bundle = products[key];
+      if (!bundle || !bundle.price) return null;
+      var symbol = bundle.price.replace(/[\d.,\s]/g, "");
+      var money = function (v) { return symbol + (Math.round(v) === v ? String(v) : v.toFixed(2)); };
+      var keys = bundle.includes || Object.keys(products).filter(function (k) { return !products[k].includes; });
+      var total = keys.reduce(function (sum, k) { return sum + amount(product(k).price); }, 0);
+      var saving = total - amount(bundle.price);
+      // "Buy four, get one free" only while it's true: five plugins, and the saving covers even the dearest
+      var dearest = keys.reduce(function (m, k) { return Math.max(m, amount(product(k).price)); }, 0);
+      return { total: money(total), saving: money(saving), hasSaving: saving > 0,
+               fourForFive: keys.length === 5 && saving + 0.001 >= dearest };
+    }
+    function each(attr, fn) {
+      document.querySelectorAll("[" + attr + "]").forEach(function (el) {
+        var m = maths(el.getAttribute(attr) || "bundle");
+        if (m) fn(el, m);
+      });
+    }
+    each("data-bundle-total", function (el, m) { el.textContent = m.total; });
+    each("data-saving-amount", function (el, m) { el.textContent = m.saving; });
+    each("data-bundle-saving", function (el, m) { if (!m.hasSaving) el.hidden = true; });
+    each("data-promo-four", function (el, m) { el.hidden = !m.fourForFive; });
   })();
 
   document.querySelectorAll("[data-email]").forEach(function (el) {

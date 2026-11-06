@@ -1,6 +1,6 @@
 **LBAudio plugins**: Squeeze (compressor), Carve (EQ), Ember (saturator), Haze (reverb), Ceiling (limiter), Drift (delay), Hush (de-esser), Spread (stereo width), Snap (transient shaper) and Orbit (chorus).
 
-Download the zip for your system from **Assets** below. Each plugin has its own zip, and `LBAudio-Bundle-…` has the core five: Squeeze, Carve, Ember, Haze and Ceiling.
+Download the zip for your system from **Assets** below. Each plugin has its own zip. The bundle zips: `LBAudio-Core5-Bundle-…` (Squeeze, Carve, Ember, Haze, Ceiling), `LBAudio-FX5-Bundle-…` (Drift, Hush, Spread, Snap, Orbit) and `LBAudio-Complete-Bundle-…` (all ten).
 
 | System | Files | Copy to |
 |---|---|---|

@@ -1,0 +1,11 @@
+# The complete bundle: every plugin, in the LBAudio-Complete-Bundle zip, one per line.
+Squeeze
+Carve
+Ember
+Haze
+Ceiling
+Drift
+Hush
+Spread
+Snap
+Orbit

@@ -1,0 +1,6 @@
+# The FX 5: the plugins in the LBAudio-FX5-Bundle zip, one per line.
+Drift
+Hush
+Spread
+Snap
+Orbit

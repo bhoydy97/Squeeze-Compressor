@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Zips every built plugin for this system, plus one bundle zip with the plugins listed in
-# packaging/bundle-plugins.txt (what the bundle on the website sells):
-#   dist/<Plugin>-<label>-<System>.zip  and  dist/LBAudio-Bundle-<label>-<System>.zip
+# Zips every built plugin for this system, plus one zip per bundle in packaging/bundles/ (each file
+# there lists the plugins in that bundle, as the website sells it):
+#   dist/<Plugin>-<label>-<System>.zip  and  dist/LBAudio-<Bundle>-Bundle-<label>-<System>.zip
 # Each zip holds the plugin(s), INSTALL.txt for the system and THIRD_PARTY_NOTICES.txt.
 #   package.sh <label>     e.g. package.sh v1.1.0
 set -euo pipefail
@@ -19,7 +19,7 @@ case "$SYSTEM" in
 esac
 
 rm -rf "$STAGE"
-mkdir -p "$DIST" "$STAGE/bundle"
+mkdir -p "$DIST"
 
 copy_bundle() { # <source bundle> <destination folder>
   if [[ "$SYSTEM" == macOS ]]; then ditto "$1" "$2/$(basename "$1")"; else cp -R "$1" "$2/"; fi
@@ -40,7 +40,7 @@ add_docs() { # <folder>
   cp "$ROOT/packaging/INSTALL-$SYSTEM.txt" "$1/INSTALL.txt"
 }
 
-in_bundle() { grep -qx "$1" <(sed 's/#.*//; s/[[:space:]]//g' "$ROOT/packaging/bundle-plugins.txt"); }
+bundle_list() { sed 's/#.*//; s/[[:space:]]//g' "$1" | grep -v '^$'; }
 
 echo "Packaging $LABEL for $SYSTEM:"
 count=0
@@ -50,17 +50,23 @@ for dir in "$ROOT"/plugins/*/; do
   [[ -d "$artefacts/VST3/$name.vst3" ]] || { echo "::error::$name.vst3 was not built"; exit 1; }
 
   mkdir -p "$STAGE/$name"
-  targets=("$STAGE/$name")
-  if in_bundle "$name"; then targets+=("$STAGE/bundle"); fi
-  for target in "${targets[@]}"; do
-    copy_bundle "$artefacts/VST3/$name.vst3" "$target"
-    if [[ "$SYSTEM" == macOS ]]; then copy_bundle "$artefacts/AU/$name.component" "$target"; fi
-  done
+  copy_bundle "$artefacts/VST3/$name.vst3" "$STAGE/$name"
+  if [[ "$SYSTEM" == macOS ]]; then copy_bundle "$artefacts/AU/$name.component" "$STAGE/$name"; fi
   add_docs "$STAGE/$name"
   make_zip "$STAGE/$name" "$DIST/$name-$LABEL-$SUFFIX.zip"
   count=$((count + 1))
 done
 
-add_docs "$STAGE/bundle"
-make_zip "$STAGE/bundle" "$DIST/LBAudio-Bundle-$LABEL-$SUFFIX.zip"
-echo "$count plugins + bundle ($(ls "$STAGE/bundle" | grep -c -E "\.(vst3)$") in the bundle)."
+bundles=0
+for list in "$ROOT"/packaging/bundles/*.txt; do
+  bundle="$(basename "$list" .txt)"; dir="$STAGE/bundle-$bundle"; mkdir -p "$dir"; n=0
+  while read -r name; do
+    [[ -d "$STAGE/$name" ]] || { echo "::error::$bundle lists $name, which isn't a plugin"; exit 1; }
+    for item in "$STAGE/$name"/*.vst3 "$STAGE/$name"/*.component; do [[ -e "$item" ]] && copy_bundle "$item" "$dir"; done
+    n=$((n + 1))
+  done < <(bundle_list "$list")
+  add_docs "$dir"
+  make_zip "$dir" "$DIST/LBAudio-$bundle-Bundle-$LABEL-$SUFFIX.zip"
+  bundles=$((bundles + 1))
+done
+echo "$count plugins + $bundles bundles."
