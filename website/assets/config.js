@@ -14,6 +14,12 @@ window.LBAUDIO_CONFIG = {
     ember:   { payhipProduct: "JuUOz", price: "\u00a315" },
     haze:    { payhipProduct: "meyHn", price: "\u00a315" },
     ceiling: { payhipProduct: "drU5n", price: "\u00a315" },
+    // The second range. Paste each Payhip code in when the product is set up; until then the site says "Coming soon".
+    drift:   { payhipProduct: "", price: "\u00a315" },
+    hush:    { payhipProduct: "", price: "\u00a315" },
+    spread:  { payhipProduct: "", price: "\u00a315" },
+    snap:    { payhipProduct: "", price: "\u00a315" },
+    orbit:   { payhipProduct: "", price: "\u00a315" },
     // The bundle's saving on the website is worked out from these prices automatically
     bundle:  { payhipProduct: "z0NFa", price: "\u00a360", includes: ["squeeze", "carve", "ember", "haze", "ceiling"] }
   }

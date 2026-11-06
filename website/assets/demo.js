@@ -82,7 +82,7 @@
   function load(name) {
     if (buffers[name]) return Promise.resolve(buffers[name]);
     if (loading[name]) return loading[name];
-    var file = name === "dry" ? "dry" : (D.presets[name] && D.presets[name].file) || name;
+    var file = name === "dry" ? (D.dryFile || "dry") : (D.presets[name] && D.presets[name].file) || name;
     loading[name] = fetch(D.base + file + ".mp3")
       .then(function (r) { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
       .then(function (data) {

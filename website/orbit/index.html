@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Orbit Chorus by LBAudio</title>
+  <meta name="description" content="Orbit is a stereo chorus plugin for Windows, macOS and Linux (VST3 and AU) with up to four voices, width, feedback for flanging and a tone control. Zero latency.">
+  <meta property="og:type" content="product">
+  <meta property="og:title" content="Orbit Chorus by LBAudio">
+  <meta property="og:description" content="From a gentle shimmer to a jet-plane flange: up to four voices, spread wide. VST3 and AU for Windows, macOS and Linux.">
+  <meta property="og:url" content="https://lbaudio.co.uk/orbit/">
+  <meta property="og:image" content="https://lbaudio.co.uk/assets/store/orbit-social-1200x630.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:site_name" content="LBAudio">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://lbaudio.co.uk/assets/store/orbit-social-1200x630.png">
+  <link rel="canonical" href="https://lbaudio.co.uk/orbit/">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="../assets/fonts/archivo-var.woff" as="font" type="font/woff" crossorigin>
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body class="theme-orbit">
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="../index.html">LB<span>Audio</span></a>
+    <nav class="nav" aria-label="Main">
+      <a class="nav-link" href="../index.html#plugins">All plugins</a>
+      <a class="nav-link" href="#listen">Listen</a>
+      <a class="nav-link" href="#plugin">The plugin</a>
+      <a class="nav-link" href="#controls">Controls</a>
+      <a class="nav-link" href="#specs">Specs</a>
+      <a class="nav-link" href="#faq">FAQ</a>
+      <a class="btn btn-primary btn-small" data-buy="orbit" href="#buy"><span data-buy-label>Buy</span></a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero">
+    <div class="wrap">
+      <div>
+        <p class="kicker">Chorus plugin &middot; VST3 &amp; AU</p>
+        <h1 class="wordmark">Orbit<small>by LBAudio</small></h1>
+        <p class="lede">From a gentle shimmer to a jet-plane flange: up to four voices circling your sound, spread wide across the stereo field.</p>
+        <div class="cta" id="buy">
+          <a class="btn btn-primary" data-buy="orbit" href="#buy"><span data-buy-label>Buy Orbit</span><span data-price="orbit">£15</span></a>
+          <a class="btn btn-ghost" href="#listen">Hear it</a>
+        </div>
+        <p class="vat-note">Instant download. Any local VAT is worked out at checkout. <a href="../index.html#plugins">See all LBAudio plugins</a>.</p>
+        <ul class="chips" aria-label="Formats and systems">
+          <li>VST3</li><li>AU</li><li>Windows</li><li>macOS</li><li>Linux</li><li>Up to 4 voices</li>
+        </ul>
+      </div>
+      <figure class="hero-shot">
+        <img src="../assets/orbit-ui.png" width="1960" height="1000" alt="The Orbit chorus window in deep purple with lavender and aqua: voices drawn as planets circling a glowing centre, Rate, Depth, Delay and Feedback knobs on the left, and Width, Tone, Mix and a 1 to 4 Voices selector on the right.">
+      </figure>
+    </div>
+  </section>
+
+  <section class="block" id="listen">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>Hear it on a real track</h2>
+        <p>Part of an LBAudio track, run through Orbit at three settings. Each version is matched to the original&#x27;s loudness. Best on headphones, so you hear the voices move across the stereo field.</p>
+      </div>
+      <div class="player" id="player">
+        <div class="player-tabs" role="tablist" aria-label="Orbit settings">
+          <button type="button" role="tab" data-preset="subtle" aria-selected="true">Subtle width</button>
+          <button type="button" role="tab" data-preset="lush" aria-selected="false">Lush</button>
+          <button type="button" role="tab" data-preset="flange" aria-selected="false">Jet flange</button>
+        </div>
+        <p class="player-desc" id="player-desc">Two slow voices blended low: a little movement and width without obvious wobble.</p>
+        <p class="player-settings mono" id="player-settings"></p>
+        <div class="wave" id="wave" role="slider" tabindex="0" aria-label="Playback position">
+          <svg id="wave-svg" viewBox="0 0 960 140" preserveAspectRatio="none" aria-hidden="true">
+            <line class="w-axis" x1="0" y1="70" x2="960" y2="70"></line>
+          </svg>
+          <div class="playhead" id="playhead"></div>
+        </div>
+        <div class="player-controls">
+          <button type="button" class="play" id="play" aria-label="Play">
+            <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"></path></svg>
+            <svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z"></path></svg>
+            <span id="play-label" class="sr-only">Play</span>
+          </button>
+          <div class="ab" role="group" aria-label="Compare">
+            <button type="button" id="ab-dry" aria-pressed="false">Original</button>
+            <button type="button" id="ab-wet" aria-pressed="true">Orbit</button>
+          </div>
+          <span class="time mono" id="time">0:00 / 0:40</span>
+        </div>
+        <p class="player-status" id="player-status" role="status"></p>
+        <div class="legend"><span class="lg-dry">Original</span><span class="lg-wet">Orbit</span><span class="lg-note">Peak level, dB scale</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="plugin">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>Voices in orbit</h2>
+        <p>The display shows each voice circling at the rate you set, so you can see how many there are, how far they move and how wide they spread.</p>
+      </div>
+      <div class="shot-notes shot-notes-solo">
+        <div>
+          <h3>One to four voices</h3>
+          <p>One voice for a classic chorus or flanger, up to four for a thick, shimmering ensemble.</p>
+        </div>
+        <div>
+          <h3>Wide from mono</h3>
+          <p>Each voice moves differently on the left and right, so even a mono synth or guitar comes out wide.</p>
+        </div>
+        <div>
+          <h3>Feedback for flanging</h3>
+          <p>Turn up Feedback with a short Delay for metallic, jet-plane flanger sweeps.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="controls">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>The controls</h2>
+        <p>Eight controls. Double-click any knob to reset it, or click a value and type one in.</p>
+      </div>
+      <table class="spec">
+        <thead><tr><th scope="col">Control</th><th scope="col">Range</th><th scope="col">What it does</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Rate</th><td class="range">0.05 to 5 Hz</td><td class="what">How fast the voices move.</td></tr>
+          <tr><th scope="row">Depth</th><td class="range">0 to 100 %</td><td class="what">How far each voice&#x27;s delay sweeps.</td></tr>
+          <tr><th scope="row">Voices</th><td class="range">1 to 4</td><td class="what">How many voices there are. More voices, thicker sound.</td></tr>
+          <tr><th scope="row">Delay</th><td class="range">5 to 26 ms</td><td class="what">The voices&#x27; base delay: short for flanging, longer for chorus and doubling.</td></tr>
+          <tr><th scope="row">Width</th><td class="range">0 to 100 %</td><td class="what">How differently the left and right sides move, from mono to fully wide.</td></tr>
+          <tr><th scope="row">Feedback</th><td class="range">0 to 70 %</td><td class="what">Feeds the voices back into themselves for a sharper, flanger-like sound.</td></tr>
+          <tr><th scope="row">Tone</th><td class="range">2 to 20 kHz</td><td class="what">Darkens the voices so the chorus stays smooth.</td></tr>
+          <tr><th scope="row">Mix</th><td class="range">0 to 100 %</td><td class="what">The balance of dry signal and voices.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="block" id="uses">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>Where to start</h2>
+        <p>Four starting points. Set these, then adjust by ear.</p>
+      </div>
+      <ul class="recipes">
+        <li>
+          <h3>Wide synth pad</h3>
+          <p class="settings">Rate 0.4–0.6 Hz · 4 voices · width 100 % · mix 40 %</p>
+          <p class="why">The classic lush chorus: thick, wide and slowly shimmering.</p>
+        </li>
+        <li>
+          <h3>Clean guitar shimmer</h3>
+          <p class="settings">Rate 0.8 Hz · depth 40 % · 2 voices · mix 35 %</p>
+          <p class="why">A bright, gentle movement for clean guitars and electric pianos.</p>
+        </li>
+        <li>
+          <h3>Jet flange</h3>
+          <p class="settings">Rate 0.1–0.2 Hz · 1 voice · delay 5 ms · feedback 55–65 %</p>
+          <p class="why">A slow, metallic sweep for drum buses, risers and transitions.</p>
+        </li>
+        <li>
+          <h3>Subtle vocal width</h3>
+          <p class="settings">Rate 0.3 Hz · depth 25 % · 2 voices · mix 15–20 %</p>
+          <p class="why">Widens backing vocals without any obvious wobble.</p>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="block" id="specs">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>Specs</h2>
+        <p>One download for each system. No iLok, no account and no activation.</p>
+      </div>
+      <dl class="specs">
+        <div><dt>Formats</dt><dd>VST3 on Windows, macOS and Linux. Audio Unit (AU) on macOS.</dd></div>
+        <div><dt>Windows</dt><dd>Windows 10 or later, 64-bit.</dd></div>
+        <div><dt>macOS</dt><dd>macOS 10.13 or later. Runs natively on Apple Silicon and Intel.</dd></div>
+        <div><dt>Linux</dt><dd>64-bit x86 (x86-64).</dd></div>
+        <div><dt>Hosts</dt><dd>Any DAW that loads VST3 or AU plugins, such as Ableton Live, FL Studio, Cubase, Reaper, Studio One, Bitwig and Logic Pro. Not available for Pro Tools (AAX).</dd></div>
+        <div><dt>Latency</dt><dd>None: zero samples.</dd></div>
+        <div><dt>Voices</dt><dd>1 to 4, with a 5 to 26 ms base delay.</dd></div>
+        <div><dt>Channels</dt><dd>Mono or stereo in, stereo out.</dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <section class="block" id="faq">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>Questions</h2>
+        <p>Anything else? Email <a data-email href="mailto:support@lbaudio.co.uk">support@lbaudio.co.uk</a>.</p>
+      </div>
+      <div class="faq">
+        <div>
+          <h3>How do I install it?</h3>
+          <p>Unzip the download and copy <code>Orbit.vst3</code> into your VST3 folder: <code>C:\Program Files\Common Files\VST3</code> on Windows or <code>~/Library/Audio/Plug-Ins/VST3</code> on a Mac. Logic users also copy <code>Orbit.component</code> into <code>~/Library/Audio/Plug-Ins/Components</code>. Then rescan plugins in your DAW. The zip includes these steps in <code>INSTALL.txt</code>.</p>
+        </div>
+        <div>
+          <h3>How many computers can I use it on?</h3>
+          <p>All the computers you personally own or use. See the <a href="../licence.html">licence agreement</a> for the details.</p>
+        </div>
+        <div>
+          <h3>Can I use it on commercial releases?</h3>
+          <p>Yes. The music you make with Orbit is entirely yours, with no royalties or credits owed.</p>
+        </div>
+        <div>
+          <h3>Do updates cost anything?</h3>
+          <p>No. Updates to Orbit version 1 are free for everyone who bought it.</p>
+        </div>
+        <div>
+          <h3>What if it doesn't work on my system?</h3>
+          <p>Get in touch within 14 days of buying. If we can't get it working, you get a full refund. See the <a href="../refunds.html">refund policy</a>.</p>
+        </div>
+        <div>
+          <h3>Does it work in Pro Tools?</h3>
+          <p>Not yet. Pro Tools only loads AAX plugins, and Orbit is VST3 and AU.</p>
+        </div>
+        <div>
+          <h3>Can I use it on a mono track?</h3>
+          <p>Yes. Orbit takes a mono input and plays it back in stereo, so a mono synth or guitar comes out wide.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="closer">
+    <div class="wrap">
+      <div>
+        <h2>Orbit</h2>
+        <p>VST3 &amp; AU for Windows, macOS and Linux. Instant download. <a href="../index.html#plugins">See all LBAudio plugins</a>.</p>
+      </div>
+      <a class="btn btn-primary" data-buy="orbit" href="#buy"><span data-buy-label>Buy Orbit</span><span data-price="orbit">£15</span></a>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>&copy; 2026 LBAudio</span>
+    <nav aria-label="Legal">
+      <a href="../licence.html">Licence agreement</a>
+      <a href="../refunds.html">Refund policy</a>
+      <a href="../privacy.html">Privacy</a>
+      <a data-email href="mailto:support@lbaudio.co.uk">support@lbaudio.co.uk</a>
+    </nav>
+    <p class="trademarks">VST is a registered trademark of Steinberg Media Technologies GmbH. Apple, macOS, Logic Pro and Audio Units are trademarks of Apple Inc. Other product names are trademarks of their owners.</p>
+  </div>
+</footer>
+
+<script src="../assets/config.js"></script>
+<script src="../assets/site.js"></script>
+<script src="../assets/demo/orbit-data.js"></script>
+<script src="../assets/demo.js"></script>
+</body>
+</html>

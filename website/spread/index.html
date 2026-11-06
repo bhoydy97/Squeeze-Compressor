@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Spread Stereo Width by LBAudio</title>
+  <meta name="description" content="Spread is a stereo width plugin for Windows, macOS and Linux (VST3 and AU) with mono bass, balance, a mono check, a live vectorscope and a correlation meter. Zero latency.">
+  <meta property="og:type" content="product">
+  <meta property="og:title" content="Spread Stereo Width by LBAudio">
+  <meta property="og:description" content="Wider or narrower mixes with a solid low end and a safe mono fold-down, on a live vectorscope. VST3 and AU for Windows, macOS and Linux.">
+  <meta property="og:url" content="https://lbaudio.co.uk/spread/">
+  <meta property="og:image" content="https://lbaudio.co.uk/assets/store/spread-social-1200x630.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:site_name" content="LBAudio">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://lbaudio.co.uk/assets/store/spread-social-1200x630.png">
+  <link rel="canonical" href="https://lbaudio.co.uk/spread/">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="../assets/fonts/archivo-var.woff" as="font" type="font/woff" crossorigin>
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body class="theme-spread">
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="../index.html">LB<span>Audio</span></a>
+    <nav class="nav" aria-label="Main">
+      <a class="nav-link" href="../index.html#plugins">All plugins</a>
+      <a class="nav-link" href="#listen">Listen</a>
+      <a class="nav-link" href="#plugin">The plugin</a>
+      <a class="nav-link" href="#controls">Controls</a>
+      <a class="nav-link" href="#specs">Specs</a>
+      <a class="nav-link" href="#faq">FAQ</a>
+      <a class="btn btn-primary btn-small" data-buy="spread" href="#buy"><span data-buy-label>Buy</span></a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero">
+    <div class="wrap">
+      <div>
+        <p class="kicker">Stereo width plugin &middot; VST3 &amp; AU</p>
+        <h1 class="wordmark">Spread<small>by LBAudio</small></h1>
+        <p class="lede">Make a mix wider or narrower without losing the low end or the mono fold-down, and watch the stereo image on a live vectorscope.</p>
+        <div class="cta" id="buy">
+          <a class="btn btn-primary" data-buy="spread" href="#buy"><span data-buy-label>Buy Spread</span><span data-price="spread">£15</span></a>
+          <a class="btn btn-ghost" href="#listen">Hear it</a>
+        </div>
+        <p class="vat-note">Instant download. Any local VAT is worked out at checkout. <a href="../index.html#plugins">See all LBAudio plugins</a>.</p>
+        <ul class="chips" aria-label="Formats and systems">
+          <li>VST3</li><li>AU</li><li>Windows</li><li>macOS</li><li>Linux</li><li>Zero latency</li>
+        </ul>
+      </div>
+      <figure class="hero-shot">
+        <img src="../assets/spread-ui.png" width="1880" height="960" alt="The Spread stereo width window in neon cyan and magenta: a vectorscope of a wide stereo signal with a correlation meter, a large Width knob at 135 %, Bass Mono, Balance and Output knobs, and a Mono button.">
+      </figure>
+    </div>
+  </section>
+
+  <section class="block" id="listen">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>Hear it on a real track</h2>
+        <p>Part of an LBAudio track, run through Spread at three settings. Each version is matched to the original&#x27;s loudness. Best on headphones: listen to the sides of the mix, while the bass stays put in the middle.</p>
+      </div>
+      <div class="player" id="player">
+        <div class="player-tabs" role="tablist" aria-label="Spread settings">
+          <button type="button" role="tab" data-preset="wider" aria-selected="true">Wider, tight bass</button>
+          <button type="button" role="tab" data-preset="huge" aria-selected="false">Extra wide</button>
+          <button type="button" role="tab" data-preset="focus" aria-selected="false">Focused</button>
+        </div>
+        <p class="player-desc" id="player-desc">A wider top with everything under 120 Hz kept in the centre, so the low end stays solid.</p>
+        <p class="player-settings mono" id="player-settings"></p>
+        <div class="wave" id="wave" role="slider" tabindex="0" aria-label="Playback position">
+          <svg id="wave-svg" viewBox="0 0 960 140" preserveAspectRatio="none" aria-hidden="true">
+            <line class="w-axis" x1="0" y1="70" x2="960" y2="70"></line>
+          </svg>
+          <div class="playhead" id="playhead"></div>
+        </div>
+        <div class="player-controls">
+          <button type="button" class="play" id="play" aria-label="Play">
+            <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"></path></svg>
+            <svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z"></path></svg>
+            <span id="play-label" class="sr-only">Play</span>
+          </button>
+          <div class="ab" role="group" aria-label="Compare">
+            <button type="button" id="ab-dry" aria-pressed="false">Original</button>
+            <button type="button" id="ab-wet" aria-pressed="true">Spread</button>
+          </div>
+          <span class="time mono" id="time">0:00 / 0:40</span>
+        </div>
+        <p class="player-status" id="player-status" role="status"></p>
+        <div class="legend"><span class="lg-dry">Original</span><span class="lg-wet">Spread</span><span class="lg-note">Peak level, dB scale</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="plugin">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>Width you can check</h2>
+        <p>The vectorscope shows where your sound sits, from the centre out to the edges, and the correlation meter warns you before a wide mix falls apart in mono.</p>
+      </div>
+      <div class="shot-notes shot-notes-solo">
+        <div>
+          <h3>Mono bass</h3>
+          <p>Bass Mono keeps everything under the frequency you pick in the centre, so kicks and bass stay solid on club systems and phone speakers.</p>
+        </div>
+        <div>
+          <h3>Mono-safe</h3>
+          <p>Spread only changes the sides of the mix, not the middle, so your track keeps its balance when it&#x27;s played in mono.</p>
+        </div>
+        <div>
+          <h3>One-click mono check</h3>
+          <p>The Mono button folds the output to mono, so you can hear your mix the way a single speaker plays it.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="controls">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>The controls</h2>
+        <p>Five controls. Double-click any knob to reset it, or click a value and type one in.</p>
+      </div>
+      <table class="spec">
+        <thead><tr><th scope="col">Control</th><th scope="col">Range</th><th scope="col">What it does</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Width</th><td class="range">0 to 200 %</td><td class="what">100 % leaves the stereo image as it is. Lower narrows it, down to mono at 0 %. Higher pushes it wider.</td></tr>
+          <tr><th scope="row">Bass mono</th><td class="range">Off to 500 Hz</td><td class="what">Everything below this frequency is kept in the centre, with a steep 24 dB/oct filter.</td></tr>
+          <tr><th scope="row">Balance</th><td class="range">L 100 to R 100</td><td class="what">Moves the whole image to the left or right.</td></tr>
+          <tr><th scope="row">Output</th><td class="range">±12 dB</td><td class="what">Level after everything else.</td></tr>
+          <tr><th scope="row">Mono</th><td class="range">On / off</td><td class="what">Folds the output to mono so you can check your mix.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="block" id="uses">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>Where to start</h2>
+        <p>Four starting points. Set these, then adjust by ear.</p>
+      </div>
+      <ul class="recipes">
+        <li>
+          <h3>Wider mix bus</h3>
+          <p class="settings">Width 115–130 % · bass mono 100–120 Hz</p>
+          <p class="why">A subtle lift in width with a rock-solid low end.</p>
+        </li>
+        <li>
+          <h3>Huge synth pad</h3>
+          <p class="settings">Width 150–180 % · bass mono 150 Hz</p>
+          <p class="why">Pushes pads out to the sides and leaves the centre clear for the vocal.</p>
+        </li>
+        <li>
+          <h3>Tidy a stereo bass</h3>
+          <p class="settings">Width 100 % · bass mono 150–200 Hz</p>
+          <p class="why">Keeps a wide bass patch wide on top while its low end stays in the middle.</p>
+        </li>
+        <li>
+          <h3>Narrow the verse</h3>
+          <p class="settings">Width 50–70 %</p>
+          <p class="why">Automate the verse narrower, so the chorus feels wider when it hits.</p>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="block" id="specs">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>Specs</h2>
+        <p>One download for each system. No iLok, no account and no activation.</p>
+      </div>
+      <dl class="specs">
+        <div><dt>Formats</dt><dd>VST3 on Windows, macOS and Linux. Audio Unit (AU) on macOS.</dd></div>
+        <div><dt>Windows</dt><dd>Windows 10 or later, 64-bit.</dd></div>
+        <div><dt>macOS</dt><dd>macOS 10.13 or later. Runs natively on Apple Silicon and Intel.</dd></div>
+        <div><dt>Linux</dt><dd>64-bit x86 (x86-64).</dd></div>
+        <div><dt>Hosts</dt><dd>Any DAW that loads VST3 or AU plugins, such as Ableton Live, FL Studio, Cubase, Reaper, Studio One, Bitwig and Logic Pro. Not available for Pro Tools (AAX).</dd></div>
+        <div><dt>Latency</dt><dd>None: zero samples.</dd></div>
+        <div><dt>Width</dt><dd>0 to 200 %, with bass mono from 20 to 500 Hz.</dd></div>
+        <div><dt>Metering</dt><dd>Vectorscope and correlation meter.</dd></div>
+        <div><dt>Channels</dt><dd>Stereo (width needs two sides).</dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <section class="block" id="faq">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>Questions</h2>
+        <p>Anything else? Email <a data-email href="mailto:support@lbaudio.co.uk">support@lbaudio.co.uk</a>.</p>
+      </div>
+      <div class="faq">
+        <div>
+          <h3>How do I install it?</h3>
+          <p>Unzip the download and copy <code>Spread.vst3</code> into your VST3 folder: <code>C:\Program Files\Common Files\VST3</code> on Windows or <code>~/Library/Audio/Plug-Ins/VST3</code> on a Mac. Logic users also copy <code>Spread.component</code> into <code>~/Library/Audio/Plug-Ins/Components</code>. Then rescan plugins in your DAW. The zip includes these steps in <code>INSTALL.txt</code>.</p>
+        </div>
+        <div>
+          <h3>How many computers can I use it on?</h3>
+          <p>All the computers you personally own or use. See the <a href="../licence.html">licence agreement</a> for the details.</p>
+        </div>
+        <div>
+          <h3>Can I use it on commercial releases?</h3>
+          <p>Yes. The music you make with Spread is entirely yours, with no royalties or credits owed.</p>
+        </div>
+        <div>
+          <h3>Do updates cost anything?</h3>
+          <p>No. Updates to Spread version 1 are free for everyone who bought it.</p>
+        </div>
+        <div>
+          <h3>What if it doesn't work on my system?</h3>
+          <p>Get in touch within 14 days of buying. If we can't get it working, you get a full refund. See the <a href="../refunds.html">refund policy</a>.</p>
+        </div>
+        <div>
+          <h3>Does it work in Pro Tools?</h3>
+          <p>Not yet. Pro Tools only loads AAX plugins, and Spread is VST3 and AU.</p>
+        </div>
+        <div>
+          <h3>Will a wider mix sound bad in mono?</h3>
+          <p>No. Spread only changes the sides of the mix, which cancel out when it&#x27;s played in mono, so the mono version stays the same. Press Mono to hear it for yourself.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="closer">
+    <div class="wrap">
+      <div>
+        <h2>Spread</h2>
+        <p>VST3 &amp; AU for Windows, macOS and Linux. Instant download. <a href="../index.html#plugins">See all LBAudio plugins</a>.</p>
+      </div>
+      <a class="btn btn-primary" data-buy="spread" href="#buy"><span data-buy-label>Buy Spread</span><span data-price="spread">£15</span></a>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>&copy; 2026 LBAudio</span>
+    <nav aria-label="Legal">
+      <a href="../licence.html">Licence agreement</a>
+      <a href="../refunds.html">Refund policy</a>
+      <a href="../privacy.html">Privacy</a>
+      <a data-email href="mailto:support@lbaudio.co.uk">support@lbaudio.co.uk</a>
+    </nav>
+    <p class="trademarks">VST is a registered trademark of Steinberg Media Technologies GmbH. Apple, macOS, Logic Pro and Audio Units are trademarks of Apple Inc. Other product names are trademarks of their owners.</p>
+  </div>
+</footer>
+
+<script src="../assets/config.js"></script>
+<script src="../assets/site.js"></script>
+<script src="../assets/demo/spread-data.js"></script>
+<script src="../assets/demo.js"></script>
+</body>
+</html>
