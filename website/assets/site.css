@@ -843,3 +843,27 @@ body.site {
 .site .rack-bundle, .site .legal .summary { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
 .site .rack-bundle:hover { border-color: rgba(255, 255, 255, .6); }
 .site .promo-tag { color: #0b0b0d; }
+
+/* "What does your mix need?": pick a problem, see the plugin that fixes it */
+.fixer { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 32px clamp(28px, 5vw, 64px); align-items: start; }
+@media (max-width: 900px) { .fixer { grid-template-columns: 1fr; } }
+.fix-problems { display: flex; flex-wrap: wrap; gap: 10px; }
+.fix-chip {
+  font: 500 1.05rem/1.2 var(--body); color: var(--text); cursor: pointer;
+  background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .3); border-radius: 999px; padding: 11px 18px;
+  transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+}
+.fix-chip:hover { border-color: #ffffff; }
+.fix-chip[aria-pressed="true"] { background: var(--text); color: #0b0b0d; border-color: var(--text); }
+.fix-chip:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
+.fix-result {
+  border: 1px solid var(--line); background: var(--panel); border-radius: 6px; padding: clamp(16px, 2.4vw, 24px);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+.fix-result[hidden] { display: none; }
+.fix-result .unit-shot { opacity: 1; }
+.fix-result .unit-led { opacity: 1; box-shadow: 0 0 0 3px color-mix(in srgb, var(--led) 30%, transparent), 0 0 12px var(--led); }
+.fix-tip { color: var(--soft); font-size: 1.1rem; margin-top: 18px; max-width: 56ch; }
+.fix-tip strong { color: var(--text); font-weight: 600; }
+.fix-cta { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 20px; }
+@media (prefers-reduced-motion: reduce) { .fix-chip { transition: none; } }

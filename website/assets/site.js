@@ -87,6 +87,21 @@
     }
   });
 
+  // "What does your mix need?": one problem at a time, its plugin shown beside it
+  (function () {
+    var chips = document.querySelectorAll(".fix-chip");
+    chips.forEach(function (chip) {
+      chip.addEventListener("click", function () {
+        chips.forEach(function (c) {
+          var on = c === chip;
+          c.setAttribute("aria-pressed", on ? "true" : "false");
+          var panel = document.getElementById(c.getAttribute("aria-controls"));
+          if (panel) panel.hidden = !on;
+        });
+      });
+    });
+  })();
+
   // ---- Interactive transfer curve -----------------------------------------
   // Same static gain computer the plugin runs (CompressorDSP.h).
   var svg = document.getElementById("curve-svg");
@@ -202,4 +217,5 @@
   level = +inLevel.value;
   render();
   if (auto) requestAnimationFrame(tick);
+
 })();

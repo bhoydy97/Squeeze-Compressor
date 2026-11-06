@@ -28,6 +28,7 @@
     <nav class="nav" aria-label="Main">
       <a class="nav-link" href="#plugins">Plugins</a>
       <a class="nav-link" href="#bundles">Bundles</a>
+      <a class="nav-link" href="#fix">Fix my mix</a>
       <a class="nav-link" href="#why">Why LBAudio</a>
       <a class="nav-link" href="#support">Support</a>
       <a class="btn btn-primary btn-small" href="complete-bundle/">Get all ten</a>
@@ -146,7 +147,7 @@
         </a>
       </div>
     </div>
-    <div class="wrap rack-complete">
+    <div class="wrap rack-complete" id="bundles">
       <div class="rack-head">
         <h2>The complete bundle <span class="tag">Best value</span></h2>
         <p>Every plugin above, the core 5 and the FX 5, in one download.</p>
@@ -158,33 +159,166 @@
     </div>
   </section>
 
-  <section class="block" id="bundles">
+  <section class="block" id="fix">
     <div class="wrap">
       <div class="section-head">
-        <h2>Bundles</h2>
-        <p>Every plugin is £15 on its own. Get five for the price of four, or all ten for £110. Each bundle is one download for your system, with free version 1 updates.</p>
+        <h2>What does your mix need?</h2>
+        <p>Pick what's bugging you. We'll point you to the plugin that fixes it, with a setting to start from.</p>
       </div>
-      <div class="deals">
-        <div class="deal">
-          <h3><a href="bundle/">The core 5</a></h3>
-          <p class="deal-names">Squeeze, Carve, Ember, Haze and Ceiling</p>
-          <p class="deal-save" data-bundle-saving="bundle">You save <span data-saving-amount="bundle">£15</span></p>
-          <p class="deal-price" data-price="bundle">£60</p>
-          <a class="btn btn-ghost btn-small" data-buy="bundle" href="bundle/"><span data-buy-label>Buy</span></a>
+      <div class="fixer">
+        <div class="fix-problems" role="group" aria-label="What's wrong with your mix">
+          <button type="button" class="fix-chip" data-fix="carve" aria-controls="fix-carve" aria-pressed="true">It sounds muddy</button>
+          <button type="button" class="fix-chip" data-fix="snap" aria-controls="fix-snap" aria-pressed="false">The drums don't hit</button>
+          <button type="button" class="fix-chip" data-fix="hush" aria-controls="fix-hush" aria-pressed="false">The vocal sounds harsh</button>
+          <button type="button" class="fix-chip" data-fix="squeeze" aria-controls="fix-squeeze" aria-pressed="false">It doesn't sit together</button>
+          <button type="button" class="fix-chip" data-fix="ember" aria-controls="fix-ember" aria-pressed="false">It sounds thin</button>
+          <button type="button" class="fix-chip" data-fix="haze" aria-controls="fix-haze" aria-pressed="false">It feels dry</button>
+          <button type="button" class="fix-chip" data-fix="spread" aria-controls="fix-spread" aria-pressed="false">It's too narrow</button>
+          <button type="button" class="fix-chip" data-fix="orbit" aria-controls="fix-orbit" aria-pressed="false">It needs movement</button>
+          <button type="button" class="fix-chip" data-fix="drift" aria-controls="fix-drift" aria-pressed="false">The gaps feel empty</button>
+          <button type="button" class="fix-chip" data-fix="ceiling" aria-controls="fix-ceiling" aria-pressed="false">It's too quiet</button>
         </div>
-        <div class="deal">
-          <h3><a href="fx-bundle/">The FX 5</a></h3>
-          <p class="deal-names">Drift, Hush, Spread, Snap and Orbit</p>
-          <p class="deal-save" data-bundle-saving="fxbundle">You save <span data-saving-amount="fxbundle">£15</span></p>
-          <p class="deal-price" data-price="fxbundle">£60</p>
-          <a class="btn btn-ghost btn-small" data-buy="fxbundle" href="fx-bundle/"><span data-buy-label>Buy</span></a>
-        </div>
-        <div class="deal deal-best">
-          <h3><a href="complete-bundle/">The complete bundle</a><span class="tag">Best value</span></h3>
-          <p class="deal-names">All ten plugins</p>
-          <p class="deal-save" data-bundle-saving="complete">You save <span data-saving-amount="complete">£15</span></p>
-          <p class="deal-price" data-price="complete">£60</p>
-          <a class="btn btn-primary btn-small" data-buy="complete" href="complete-bundle/"><span data-buy-label>Buy</span></a>
+        <div class="fix-results" aria-live="polite">
+        <article class="fix-result" id="fix-carve">
+          <a class="unit u-carve" href="carve/">
+            <span class="unit-led" aria-hidden="true"></span>
+            <span class="unit-name">Carve</span>
+            <span class="unit-type">EQ</span>
+            <img class="unit-shot" src="assets/rack/carve.jpg" width="640" height="237" alt="" loading="lazy">
+            <span class="unit-price" data-price="carve">£15</span>
+          </a>
+          <p class="fix-tip"><strong>Start here:</strong> Sweep a wide bell between 200 and 400 Hz and cut 2 to 4 dB, then high-pass anything that isn't bass.</p>
+          <div class="fix-cta">
+            <a class="btn btn-primary" data-buy="carve" href="carve/"><span data-buy-label>Buy Carve</span><span data-price="carve">£15</span></a>
+            <a class="btn btn-ghost" href="carve/#listen">Hear it</a>
+          </div>
+        </article>
+        <article class="fix-result" id="fix-snap" hidden>
+          <a class="unit u-snap" href="snap/">
+            <span class="unit-led" aria-hidden="true"></span>
+            <span class="unit-name">Snap</span>
+            <span class="unit-type">Transient shaper</span>
+            <img class="unit-shot" src="assets/rack/snap.jpg" width="640" height="237" alt="" loading="lazy">
+            <span class="unit-price" data-price="snap">£15</span>
+          </a>
+          <p class="fix-tip"><strong>Start here:</strong> Push Attack until the kick and snare jump out. If the room gets in the way, pull Sustain down.</p>
+          <div class="fix-cta">
+            <a class="btn btn-primary" data-buy="snap" href="snap/"><span data-buy-label>Buy Snap</span><span data-price="snap">£15</span></a>
+            <a class="btn btn-ghost" href="snap/#listen">Hear it</a>
+          </div>
+        </article>
+        <article class="fix-result" id="fix-hush" hidden>
+          <a class="unit u-hush" href="hush/">
+            <span class="unit-led" aria-hidden="true"></span>
+            <span class="unit-name">Hush</span>
+            <span class="unit-type">De-esser</span>
+            <img class="unit-shot" src="assets/rack/hush.jpg" width="640" height="237" alt="" loading="lazy">
+            <span class="unit-price" data-price="hush">£15</span>
+          </a>
+          <p class="fix-tip"><strong>Start here:</strong> Turn on Listen and sweep Frequency between 5 and 8 kHz to find the S sounds, then bring Threshold down until they sit back.</p>
+          <div class="fix-cta">
+            <a class="btn btn-primary" data-buy="hush" href="hush/"><span data-buy-label>Buy Hush</span><span data-price="hush">£15</span></a>
+            <a class="btn btn-ghost" href="hush/#listen">Hear it</a>
+          </div>
+        </article>
+        <article class="fix-result" id="fix-squeeze" hidden>
+          <a class="unit u-squeeze" href="squeeze/">
+            <span class="unit-led" aria-hidden="true"></span>
+            <span class="unit-name">Squeeze</span>
+            <span class="unit-type">Compressor</span>
+            <img class="unit-shot" src="assets/rack/squeeze.jpg" width="640" height="237" alt="" loading="lazy">
+            <span class="unit-price" data-price="squeeze">£15</span>
+          </a>
+          <p class="fix-tip"><strong>Start here:</strong> On the mix bus: 2:1, a 30 ms attack, release with the groove, and just 2 to 3 dB of gain reduction.</p>
+          <div class="fix-cta">
+            <a class="btn btn-primary" data-buy="squeeze" href="squeeze/"><span data-buy-label>Buy Squeeze</span><span data-price="squeeze">£15</span></a>
+            <a class="btn btn-ghost" href="squeeze/#listen">Hear it</a>
+          </div>
+        </article>
+        <article class="fix-result" id="fix-ember" hidden>
+          <a class="unit u-ember" href="ember/">
+            <span class="unit-led" aria-hidden="true"></span>
+            <span class="unit-name">Ember</span>
+            <span class="unit-type">Saturator</span>
+            <img class="unit-shot" src="assets/rack/ember.jpg" width="640" height="237" alt="" loading="lazy">
+            <span class="unit-price" data-price="ember">£15</span>
+          </a>
+          <p class="fix-tip"><strong>Start here:</strong> Pick Tape, drive it hard, then blend it in under the original with Mix at around 35%.</p>
+          <div class="fix-cta">
+            <a class="btn btn-primary" data-buy="ember" href="ember/"><span data-buy-label>Buy Ember</span><span data-price="ember">£15</span></a>
+            <a class="btn btn-ghost" href="ember/#listen">Hear it</a>
+          </div>
+        </article>
+        <article class="fix-result" id="fix-haze" hidden>
+          <a class="unit u-haze" href="haze/">
+            <span class="unit-led" aria-hidden="true"></span>
+            <span class="unit-name">Haze</span>
+            <span class="unit-type">Reverb</span>
+            <img class="unit-shot" src="assets/rack/haze.jpg" width="640" height="237" alt="" loading="lazy">
+            <span class="unit-price" data-price="haze">£15</span>
+          </a>
+          <p class="fix-tip"><strong>Start here:</strong> Give it 40 to 80 ms of pre-delay so the words stay in front, and set Low Cut around 300 to 400 Hz to keep the lows clean.</p>
+          <div class="fix-cta">
+            <a class="btn btn-primary" data-buy="haze" href="haze/"><span data-buy-label>Buy Haze</span><span data-price="haze">£15</span></a>
+            <a class="btn btn-ghost" href="haze/#listen">Hear it</a>
+          </div>
+        </article>
+        <article class="fix-result" id="fix-spread" hidden>
+          <a class="unit u-spread" href="spread/">
+            <span class="unit-led" aria-hidden="true"></span>
+            <span class="unit-name">Spread</span>
+            <span class="unit-type">Stereo width</span>
+            <img class="unit-shot" src="assets/rack/spread.jpg" width="640" height="237" alt="" loading="lazy">
+            <span class="unit-price" data-price="spread">£15</span>
+          </a>
+          <p class="fix-tip"><strong>Start here:</strong> Width around 130%, with Bass Mono at 120 Hz so the low end stays solid. Press Mono to check nothing disappears.</p>
+          <div class="fix-cta">
+            <a class="btn btn-primary" data-buy="spread" href="spread/"><span data-buy-label>Buy Spread</span><span data-price="spread">£15</span></a>
+            <a class="btn btn-ghost" href="spread/#listen">Hear it</a>
+          </div>
+        </article>
+        <article class="fix-result" id="fix-orbit" hidden>
+          <a class="unit u-orbit" href="orbit/">
+            <span class="unit-led" aria-hidden="true"></span>
+            <span class="unit-name">Orbit</span>
+            <span class="unit-type">Chorus</span>
+            <img class="unit-shot" src="assets/rack/orbit.jpg" width="640" height="237" alt="" loading="lazy">
+            <span class="unit-price" data-price="orbit">£15</span>
+          </a>
+          <p class="fix-tip"><strong>Start here:</strong> Two voices at a slow rate with Mix around 35% adds width and shimmer to pads, keys and guitars.</p>
+          <div class="fix-cta">
+            <a class="btn btn-primary" data-buy="orbit" href="orbit/"><span data-buy-label>Buy Orbit</span><span data-price="orbit">£15</span></a>
+            <a class="btn btn-ghost" href="orbit/#listen">Hear it</a>
+          </div>
+        </article>
+        <article class="fix-result" id="fix-drift" hidden>
+          <a class="unit u-drift" href="drift/">
+            <span class="unit-led" aria-hidden="true"></span>
+            <span class="unit-name">Drift</span>
+            <span class="unit-type">Delay</span>
+            <img class="unit-shot" src="assets/rack/drift.jpg" width="640" height="237" alt="" loading="lazy">
+            <span class="unit-price" data-price="drift">£15</span>
+          </a>
+          <p class="fix-tip"><strong>Start here:</strong> Sync to a dotted eighth in Ping-pong, then turn up Duck so the echoes fill the gaps and get out of the vocal's way.</p>
+          <div class="fix-cta">
+            <a class="btn btn-primary" data-buy="drift" href="drift/"><span data-buy-label>Buy Drift</span><span data-price="drift">£15</span></a>
+            <a class="btn btn-ghost" href="drift/#listen">Hear it</a>
+          </div>
+        </article>
+        <article class="fix-result" id="fix-ceiling" hidden>
+          <a class="unit u-ceiling" href="ceiling/">
+            <span class="unit-led" aria-hidden="true"></span>
+            <span class="unit-name">Ceiling</span>
+            <span class="unit-type">Limiter</span>
+            <img class="unit-shot" src="assets/rack/ceiling.jpg" width="640" height="237" alt="" loading="lazy">
+            <span class="unit-price" data-price="ceiling">£15</span>
+          </a>
+          <p class="fix-tip"><strong>Start here:</strong> Set the ceiling to −1 dB with True Peak on, then raise Gain while you watch the loudness. Around −14 LUFS is plenty for streaming.</p>
+          <div class="fix-cta">
+            <a class="btn btn-primary" data-buy="ceiling" href="ceiling/"><span data-buy-label>Buy Ceiling</span><span data-price="ceiling">£15</span></a>
+            <a class="btn btn-ghost" href="ceiling/#listen">Hear it</a>
+          </div>
+        </article>
         </div>
       </div>
     </div>
