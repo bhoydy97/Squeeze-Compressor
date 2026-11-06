@@ -1,0 +1,7 @@
+# The plugins in the LBAudio-Bundle zip (what the bundle on the website sells), one per line.
+# Every plugin still gets its own zip; only these go into the bundle.
+Squeeze
+Carve
+Ember
+Haze
+Ceiling

@@ -22,7 +22,7 @@ FetchContent_MakeAvailable(JUCE)
 # ------------------------------------------------------------------------------
 set(LBAUDIO_VERSION "${PROJECT_VERSION}" CACHE STRING "Version the DAW shows for every plugin (CI sets it from the release tag)")
 set(LBAUDIO_FORMATS VST3 AU CACHE STRING "Plugin formats to build (AU is only built on macOS)")
-set(LBAUDIO_PLUGINS Squeeze Carve Ember Haze Ceiling CACHE STRING "Which plugins to build")
+set(LBAUDIO_PLUGINS Squeeze Carve Ember Haze Ceiling Drift Hush Spread Snap Orbit CACHE STRING "Which plugins to build")
 option(LBAUDIO_COPY_AFTER_BUILD "Copy plugins into your system plugin folders after building" OFF)
 option(LBAUDIO_BUILD_TESTS "Build the test tools" OFF)
 option(LBAUDIO_LTO "Link-time optimisation for release builds (slower to build)" ON)

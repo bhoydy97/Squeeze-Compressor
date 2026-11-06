@@ -1,6 +1,6 @@
 # LBAudio plugins
 
-Five mixing and mastering plugins by LBAudio, built with [JUCE 8](https://juce.com).
+Ten mixing and mastering plugins by LBAudio, built with [JUCE 8](https://juce.com).
 Each builds as **VST3** on Windows, macOS and Linux, and also as **Audio Unit** on macOS (for Logic / GarageBand).
 
 | | Plugin | What it is |
@@ -10,7 +10,13 @@ Each builds as **VST3** on Windows, macOS and Linux, and also as **Audio Unit** 
 | ![](docs/ember.png) | **Ember** | Saturator: tape, tube and clip characters, 16x oversampled |
 | ![](docs/haze.png) | **Haze** | Algorithmic reverb with an exact decay time and a display of how it dies away |
 | ![](docs/ceiling.png) | **Ceiling** | True-peak limiter with LUFS loudness metering |
+| ![](docs/drift.png) | **Drift** | Tempo-synced tape delay: ping-pong, darkening repeats, wobble and ducking |
+| ![](docs/hush.png) | **Hush** | De-esser: split or wideband, with a listen mode and a history of every S it caught |
+| ![](docs/spread.png) | **Spread** | Stereo width with bass mono, a mono check and a vectorscope |
+| ![](docs/snap.png) | **Snap** | Transient shaper: level-independent attack and sustain |
+| ![](docs/orbit.png) | **Orbit** | Stereo chorus with up to four voices, shown orbiting on screen |
 
+The first five share the house look; Drift, Hush, Spread, Snap and Orbit each have their own (themes in `shared/LBAudio/UI.h`).
 All of them: double-click a knob to reset it; click a value to type one in (`1.2 s`, `250 ms`, `4k`, `off` all work).
 
 ## The plugins
@@ -83,10 +89,76 @@ Readouts: momentary, short-term and integrated loudness (LUFS, ITU-R BS.1770-4 /
 
 2 ms lookahead: the gain is held and smoothed so it has fully arrived before each peak, with no clipping involved. True-peak detection takes the larger of an 8x interpolator and the BS.1770 meter filter, so standard true-peak meters read at or under the ceiling. Latency: 2 ms plus 16 samples (111 samples at 48 kHz), reported to the DAW.
 
+### Drift (delay)
+
+| Control | Range | What it does |
+|---|---|---|
+| Time | 1 ms … 2 s | The delay time when Sync is off |
+| Sync / Division | 1/32 … 1/1, with triplets and dotted | Locks the echoes to the project tempo (120 BPM if the host doesn't give one) |
+| Feedback | 0 … 95 % | How much of each echo comes round again |
+| Mode | Stereo / Ping-pong | Ping-pong bounces the echoes left, right, left… |
+| Low Cut, High Cut | 20 Hz … 2 kHz, 1 … 20 kHz | Filters inside the loop, so every repeat is a little thinner and darker |
+| Wobble | 0 … 100 % | Tape-style wow (0.55 Hz) and flutter (5.3 Hz) on the delay time |
+| Duck | 0 … 24 dB | Turns the echoes down while you play and lets them back up in the gaps |
+| Mix | 0 … 100 % | Dry/wet |
+
+Hermite-interpolated delay lines (up to 4 s), so time changes and wobble stay smooth. The loop is untouched up to full scale and soft-limited above it. Zero latency.
+
+### Hush (de-esser)
+
+| Control | Range | What it does |
+|---|---|---|
+| Frequency | 2 … 12 kHz | Where Hush listens for S sounds |
+| Threshold | −60 … 0 dB | The level the S band has to reach before Hush acts |
+| Range | 0 … 24 dB | The most it will turn down |
+| Mode | Split / Wide | Split turns down only the top end; Wide turns down the whole signal |
+| Listen | on/off | Hear only the band Hush is listening to |
+
+Turns down 3 dB for every 4 dB over the threshold. Split is phase-coherent (g·x + (1−g)·a 4th-order low-pass of x), so it reaches its full depth and the body of the voice is untouched; with nothing to reduce, both modes pass the input bit for bit. Zero latency.
+
+### Spread (stereo width)
+
+| Control | Range | What it does |
+|---|---|---|
+| Width | 0 … 200 % | 0 % is mono, 100 % leaves the image alone, 200 % doubles the side |
+| Bass Mono | Off, 20 … 500 Hz | Everything below this is made mono (4th-order high-pass on the side) |
+| Balance | L 100 … R 100 | Turns down the far side |
+| Output | −12 … +12 dB | Output level |
+| Mono | on/off | Folds the output to mono to check how the mix collapses |
+
+The vectorscope shows the output as a cloud (mono is a vertical line); the correlation meter reads from −1 (out of phase) to +1. Stereo only; zero latency.
+
+### Snap (transient shaper)
+
+| Control | Range | What it does |
+|---|---|---|
+| Attack | −15 … +15 dB | Harder, snappier hits (up) or softer ones (down) |
+| Sustain | −15 … +15 dB | More ring and room (up) or tighter tails (down) |
+| Speed | 3 … 60 ms | How much of the front of each hit counts as the attack |
+| Mix | 0 … 100 % | Dry/wet |
+| Output | −12 … +12 dB | Output level |
+
+Envelope followers compared in dB, so a hit is shaped the same at any level and a steady sound isn't touched. At Attack and Sustain 0 (or Mix 0) the input passes bit for bit. Zero latency.
+
+### Orbit (chorus)
+
+| Control | Range | What it does |
+|---|---|---|
+| Rate | 0.05 … 5 Hz | How fast the voices swing |
+| Depth | 0 … 100 % | How far they swing (up to ±4 ms) |
+| Voices | 1 … 4 | How many voices on each side |
+| Delay | 5 … 26 ms | The voices' base delay |
+| Width | 0 … 100 % | How far the chorus spreads (right voices run up to a quarter turn behind the left) |
+| Feedback | 0 … 70 % | Feeds the chorus back into itself, for a richer, more flanged sound |
+| Tone | 2 … 20 kHz | Softens the top of the chorus |
+| Mix | 0 … 100 % | Dry/wet |
+
+At Width 0 a mono input stays mono. Mono in, stereo out works; zero latency.
+
 ## Getting the plugins
 
 ### Option A: download a release
-Open the repository's **Releases** page. Each release has a zip per plugin per system, plus `LBAudio-Bundle-…` zips with all five. Installation steps are listed under each release and in the `INSTALL.txt` inside every zip.
+Open the repository's **Releases** page. Each release has a zip per plugin per system, plus `LBAudio-Bundle-…` zips with the five plugins sold as the bundle (listed in `packaging/bundle-plugins.txt`). Installation steps are listed under each release and in the `INSTALL.txt` inside every zip.
 
 ### Option B: build them yourself
 You need **CMake 3.22+**, **Git** and a C++17 compiler:
@@ -153,8 +225,13 @@ Each plugin has a test tool that loads the built VST3 the way a DAW does, then r
 - **Ember:** latency alignment, bit-exact dry mix, auto gain per character, harmonics per character, aliasing (−90 dB), tone tilt
 - **Haze:** RT60 against the Decay knob at three sizes, damping per band, pre-delay timing, low cut, stereo width, stability at 20 s decay, click-free Size changes
 - **Ceiling:** sample and true-peak ceilings on hard-driven signals (checked with an independent 16x meter), bit-exact below the ceiling, release time constants, no distortion on steady tones, loudness against EBU Tech 3341
+- **Drift:** echo timing to the sample, ping-pong routing, feedback ratio, loop filters against their maths, tempo sync, ducking depth and release, wobble, bit-exact dry mix, stability at 95 % feedback
+- **Hush:** bit-exact below the threshold, reduction depth, split leaves the low end alone, wide mode, frequency targeting, range cap, listen mode, release
+- **Spread:** neutral passthrough, width 0/200 %, bass mono (low side removed, highs and centred bass untouched), mono check, balance law, correlation meter
+- **Snap:** bit-exact when neutral, steady tones untouched, attack shapes fronts not tails, sustain shapes tails not fronts, level independence, mix
+- **Orbit:** bit-exact dry mix, a still voice is an exact delay, depth spreads a pure tone, width 0 stays mono, level with 1-4 voices, tone filter against its maths, stability at 70 % feedback
 
-All five also pass [pluginval](https://github.com/Tracktion/pluginval) at strictness level 10.
+All ten also pass [pluginval](https://github.com/Tracktion/pluginval) at strictness level 10.
 
 ## Code layout
 
@@ -198,6 +275,11 @@ All plugins share company **LBAudio**, manufacturer code `LBau`, and bundle IDs 
 | Ember | `Emb1` | Fx / Distortion |
 | Haze | `Hze1` | Fx / Reverb |
 | Ceiling | `Cei1` | Fx / Dynamics / Mastering |
+| Drift | `Drf1` | Fx / Delay |
+| Hush | `Hsh1` | Fx / Dynamics |
+| Spread | `Spr1` | Fx / Spatial |
+| Snap | `Snp1` | Fx / Dynamics |
+| Orbit | `Orb1` | Fx / Modulation |
 
 DAWs recognise a plugin by its manufacturer and plugin codes. Don't change them once people own a copy, or their saved sessions won't find it.
 

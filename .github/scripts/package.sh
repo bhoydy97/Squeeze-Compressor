@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Zips every built plugin for this system, plus one bundle zip with all of them:
+# Zips every built plugin for this system, plus one bundle zip with the plugins listed in
+# packaging/bundle-plugins.txt (what the bundle on the website sells):
 #   dist/<Plugin>-<label>-<System>.zip  and  dist/LBAudio-Bundle-<label>-<System>.zip
 # Each zip holds the plugin(s), INSTALL.txt for the system and THIRD_PARTY_NOTICES.txt.
 #   package.sh <label>     e.g. package.sh v1.1.0
@@ -39,6 +40,8 @@ add_docs() { # <folder>
   cp "$ROOT/packaging/INSTALL-$SYSTEM.txt" "$1/INSTALL.txt"
 }
 
+in_bundle() { grep -qx "$1" <(sed 's/#.*//; s/[[:space:]]//g' "$ROOT/packaging/bundle-plugins.txt"); }
+
 echo "Packaging $LABEL for $SYSTEM:"
 count=0
 for dir in "$ROOT"/plugins/*/; do
@@ -47,7 +50,9 @@ for dir in "$ROOT"/plugins/*/; do
   [[ -d "$artefacts/VST3/$name.vst3" ]] || { echo "::error::$name.vst3 was not built"; exit 1; }
 
   mkdir -p "$STAGE/$name"
-  for target in "$STAGE/$name" "$STAGE/bundle"; do
+  targets=("$STAGE/$name")
+  if in_bundle "$name"; then targets+=("$STAGE/bundle"); fi
+  for target in "${targets[@]}"; do
     copy_bundle "$artefacts/VST3/$name.vst3" "$target"
     if [[ "$SYSTEM" == macOS ]]; then copy_bundle "$artefacts/AU/$name.component" "$target"; fi
   done
@@ -58,4 +63,4 @@ done
 
 add_docs "$STAGE/bundle"
 make_zip "$STAGE/bundle" "$DIST/LBAudio-Bundle-$LABEL-$SUFFIX.zip"
-echo "$count plugins + bundle."
+echo "$count plugins + bundle ($(ls "$STAGE/bundle" | grep -c -E "\.(vst3)$") in the bundle)."

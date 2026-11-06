@@ -1,7 +1,10 @@
 #pragma once
 
 // LBAudio shared look: colours, fonts, knob/toggle drawing and level meters.
-// Every LBAudio plugin uses these so the range looks and behaves the same.
+//
+// The original five plugins use the house palette (Colours, below) through the default Theme. Newer plugins each
+// carry their own Theme: palette, knob style, panel style and title lettering, so every plugin can have its own
+// identity while sharing the same controls, behaviour and code.
 
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <juce_audio_processors/juce_audio_processors.h>
@@ -30,24 +33,67 @@ inline juce::Font font (float height, bool bold = false)
 }
 
 //==============================================================================
+// A plugin's visual identity. Default-constructed, it is the house look of the original range.
+enum class KnobStyle
+{
+    Classic,  // track arc, value arc, dark cap, pointer line
+    Halo,     // wide soft-glowing arc, rounded cap, pointer dot
+    Hairline, // thin arc, flat cap with an outline, long pointer: for light faceplates
+    Neon,     // arc running from accent to accent2 with a glow, bright pointer
+    Chunky,   // thick square-ended arc and a thick pointer bar on a solid cap
+    Orbit     // fine arc with a "planet" dot riding its end
+};
+
+enum class PanelStyle { Filled, Outline, Screen };
+
+struct Theme
+{
+    juce::Colour background { Colours::background }, panel { Colours::panel }, panelEdge { Colours::panelEdge },
+                 track { Colours::track }, text { Colours::text }, dim { Colours::dim },
+                 accent { Colours::accent }, accent2 { Colours::gr }, onAccent { 0xff07211e },
+                 knobTop { 0xff323843 }, knobBottom { 0xff1c1f25 }, knobEdge { 0xff3d434f }, pointer { Colours::text },
+                 meterBack { Colours::background }, meterLow { Colours::green }, meterMid { Colours::yellow },
+                 meterHigh { Colours::red }, reduction { Colours::gr },
+                 headerText { Colours::text }, headerType { Colours::accent }, headerBrand { Colours::dim },
+                 headerLine { Colours::panelEdge };
+    KnobStyle knob = KnobStyle::Classic;
+    PanelStyle panelStyle = PanelStyle::Filled;
+    float corner = 8.0f;
+    // Title lettering
+    float titleSize = 24.0f, titleKerning = 0.0f, typeKerning = 0.0f;
+    bool titleBold = true, titleItalic = false, titleCentred = false;
+};
+
+inline const Theme& defaultTheme() { static const Theme t; return t; }
+
+inline juce::Font styledFont (float height, bool bold, bool italic, float kerning = 0.0f)
+{
+    int flags = (bold ? juce::Font::bold : 0) | (italic ? juce::Font::italic : 0);
+    return juce::Font (juce::FontOptions (height, flags)).withExtraKerningFactor (kerning);
+}
+
+//==============================================================================
 class LookAndFeel final : public juce::LookAndFeel_V4
 {
 public:
-    LookAndFeel()
+    explicit LookAndFeel (Theme t = {}) : theme (t)
     {
-        setColour (juce::Slider::textBoxTextColourId, Colours::text);
+        setColour (juce::Slider::textBoxTextColourId, theme.text);
         setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
         setColour (juce::Slider::textBoxBackgroundColourId, juce::Colours::transparentBlack);
-        setColour (juce::Slider::textBoxHighlightColourId, Colours::accent.withAlpha (0.3f));
-        setColour (juce::Label::textColourId, Colours::text);
-        setColour (juce::Label::textWhenEditingColourId, Colours::text);
-        setColour (juce::Label::backgroundWhenEditingColourId, Colours::panelEdge);
-        setColour (juce::Label::outlineWhenEditingColourId, Colours::accent);
-        setColour (juce::TextEditor::highlightColourId, Colours::accent.withAlpha (0.3f));
-        setColour (juce::TextEditor::highlightedTextColourId, Colours::text);
-        setColour (juce::CaretComponent::caretColourId, Colours::accent);
-        setColour (juce::TextButton::textColourOffId, Colours::dim);
-        setColour (juce::TextButton::textColourOnId, juce::Colour (0xff07211e));
+        setColour (juce::Slider::textBoxHighlightColourId, theme.accent.withAlpha (0.3f));
+        setColour (juce::Label::textColourId, theme.text);
+        setColour (juce::Label::textWhenEditingColourId, theme.text);
+        setColour (juce::Label::backgroundWhenEditingColourId, theme.panelEdge);
+        setColour (juce::Label::outlineWhenEditingColourId, theme.accent);
+        setColour (juce::TextEditor::highlightColourId, theme.accent.withAlpha (0.3f));
+        setColour (juce::TextEditor::highlightedTextColourId, theme.text);
+        setColour (juce::CaretComponent::caretColourId, theme.accent);
+        setColour (juce::TextButton::textColourOffId, theme.dim);
+        setColour (juce::TextButton::textColourOnId, theme.onAccent);
+        setColour (juce::TooltipWindow::backgroundColourId, theme.panel);
+        setColour (juce::TooltipWindow::textColourId, theme.text);
+        setColour (juce::TooltipWindow::outlineColourId, theme.panelEdge);
     }
 
     void drawRotarySlider (juce::Graphics& g, int x, int y, int width, int height, float pos,
@@ -57,14 +103,7 @@ public:
         const auto bounds = juce::Rectangle<int> (x, y, width, height).toFloat().reduced (4.0f);
         const float radius = juce::jmin (bounds.getWidth(), bounds.getHeight()) * 0.5f;
         const float cx = bounds.getCentreX(), cy = bounds.getCentreY();
-        const float lineW = 3.5f;
-        const float arcR = radius - lineW;
         const float angle = startAngle + pos * (endAngle - startAngle);
-
-        juce::Path track;
-        track.addCentredArc (cx, cy, arcR, arcR, 0.0f, startAngle, endAngle, true);
-        g.setColour (Colours::track.withMultipliedAlpha (alpha));
-        g.strokePath (track, { lineW, juce::PathStrokeType::curved, juce::PathStrokeType::rounded });
 
         // Bipolar knobs (e.g. makeup) draw their arc from the zero point, or from an "origin" value if set
         // (e.g. 100% width).
@@ -74,48 +113,173 @@ public:
             arcStart = startAngle + (float) slider.valueToProportionOfLength ((double) props["origin"]) * (endAngle - startAngle);
         else if (props.contains ("bipolar"))
             arcStart = startAngle + (float) slider.valueToProportionOfLength (0.0) * (endAngle - startAngle);
-
-        if (std::abs (angle - arcStart) > 0.001f)
+        const bool hasValue = std::abs (angle - arcStart) > 0.001f;
+        const float a0 = juce::jmin (arcStart, angle), a1 = juce::jmax (arcStart, angle);
+        auto arc = [&] (float r, float from, float to)
         {
-            juce::Path value;
-            value.addCentredArc (cx, cy, arcR, arcR, 0.0f, juce::jmin (arcStart, angle), juce::jmax (arcStart, angle), true);
-            g.setColour (Colours::accent.withMultipliedAlpha (alpha));
-            g.strokePath (value, { lineW, juce::PathStrokeType::curved, juce::PathStrokeType::rounded });
+            juce::Path p; p.addCentredArc (cx, cy, r, r, 0.0f, from, to, true); return p;
+        };
+        auto onCircle = [&] (float r, float a) { return juce::Point<float> (cx + r * std::sin (a), cy - r * std::cos (a)); };
+        auto col = [&] (juce::Colour c) { return c.withMultipliedAlpha (alpha); };
+        const juce::PathStrokeType::EndCapStyle round = juce::PathStrokeType::rounded;
+
+        switch (theme.knob)
+        {
+            case KnobStyle::Classic:
+            {
+                const float lineW = 3.5f, arcR = radius - lineW;
+                g.setColour (col (theme.track));
+                g.strokePath (arc (arcR, startAngle, endAngle), { lineW, juce::PathStrokeType::curved, round });
+                if (hasValue)
+                {
+                    g.setColour (col (theme.accent));
+                    g.strokePath (arc (arcR, a0, a1), { lineW, juce::PathStrokeType::curved, round });
+                }
+                const float knobR = arcR - 7.0f;
+                paintCap (g, cx, cy, knobR, alpha);
+                juce::Path pointer;
+                pointer.addRoundedRectangle (-1.5f, -knobR + 5.0f, 3.0f, knobR * 0.42f, 1.5f);
+                g.setColour (col (theme.pointer));
+                g.fillPath (pointer, juce::AffineTransform::rotation (angle).translated (cx, cy));
+                break;
+            }
+            case KnobStyle::Halo:
+            {
+                const float lineW = 5.0f, arcR = radius - lineW;
+                g.setColour (col (theme.track));
+                g.strokePath (arc (arcR, startAngle, endAngle), { lineW, juce::PathStrokeType::curved, round });
+                if (hasValue)
+                {
+                    g.setColour (col (theme.accent.withAlpha (0.16f)));
+                    g.strokePath (arc (arcR, a0, a1), { lineW * 3.2f, juce::PathStrokeType::curved, round });
+                    g.setColour (col (theme.accent.withAlpha (0.3f)));
+                    g.strokePath (arc (arcR, a0, a1), { lineW * 1.8f, juce::PathStrokeType::curved, round });
+                    g.setColour (col (theme.accent));
+                    g.strokePath (arc (arcR, a0, a1), { lineW, juce::PathStrokeType::curved, round });
+                }
+                const float knobR = arcR - 9.0f;
+                paintCap (g, cx, cy, knobR, alpha);
+                g.setColour (col (theme.pointer));
+                g.fillEllipse (juce::Rectangle<float> (6.0f, 6.0f).withCentre (onCircle (knobR - 8.0f, angle)));
+                break;
+            }
+            case KnobStyle::Hairline:
+            {
+                const float lineW = 2.0f, arcR = radius - 3.0f;
+                g.setColour (col (theme.track));
+                g.strokePath (arc (arcR, startAngle, endAngle), { lineW, juce::PathStrokeType::curved, round });
+                if (hasValue)
+                {
+                    g.setColour (col (theme.accent));
+                    g.strokePath (arc (arcR, a0, a1), { lineW + 1.0f, juce::PathStrokeType::curved, round });
+                }
+                const float knobR = arcR - 8.0f;
+                const auto cap = juce::Rectangle<float> (knobR * 2.0f, knobR * 2.0f).withCentre ({ cx, cy });
+                g.setColour (col (theme.knobTop));
+                g.fillEllipse (cap);
+                g.setColour (col (theme.knobEdge));
+                g.drawEllipse (cap, 1.0f);
+                g.setColour (col (theme.pointer));
+                g.drawLine (juce::Line<float> (onCircle (knobR * 0.15f, angle), onCircle (knobR - 3.0f, angle)), 2.0f);
+                g.setColour (col (theme.accent));
+                g.fillEllipse (juce::Rectangle<float> (6.0f, 6.0f).withCentre (onCircle (arcR, angle)));
+                break;
+            }
+            case KnobStyle::Neon:
+            {
+                const float lineW = 4.0f, arcR = radius - lineW - 1.0f;
+                g.setColour (col (theme.track));
+                g.strokePath (arc (arcR, startAngle, endAngle), { lineW, juce::PathStrokeType::curved, round });
+                if (hasValue)
+                {
+                    juce::ColourGradient grad (col (theme.accent), cx - arcR, cy, col (theme.accent2), cx + arcR, cy, false);
+                    auto p = arc (arcR, a0, a1);
+                    g.setGradientFill (grad);
+                    g.setOpacity (0.22f);
+                    g.strokePath (p, { lineW * 3.0f, juce::PathStrokeType::curved, round });
+                    g.setOpacity (1.0f);
+                    g.setGradientFill (grad);
+                    g.strokePath (p, { lineW, juce::PathStrokeType::curved, round });
+                }
+                const float knobR = arcR - 8.0f;
+                paintCap (g, cx, cy, knobR, alpha);
+                juce::Path pointer;
+                pointer.addRoundedRectangle (-1.25f, -knobR + 4.0f, 2.5f, knobR * 0.5f, 1.25f);
+                g.setColour (col (theme.pointer));
+                g.fillPath (pointer, juce::AffineTransform::rotation (angle).translated (cx, cy));
+                break;
+            }
+            case KnobStyle::Chunky:
+            {
+                const float lineW = 7.0f, arcR = radius - lineW * 0.5f - 1.0f;
+                const juce::PathStrokeType stroke (lineW, juce::PathStrokeType::curved, juce::PathStrokeType::butt);
+                g.setColour (col (theme.track));
+                g.strokePath (arc (arcR, startAngle, endAngle), stroke);
+                if (hasValue)
+                {
+                    g.setColour (col (theme.accent));
+                    g.strokePath (arc (arcR, a0, a1), stroke);
+                }
+                const float knobR = arcR - lineW * 0.5f - 5.0f;
+                const auto cap = juce::Rectangle<float> (knobR * 2.0f, knobR * 2.0f).withCentre ({ cx, cy });
+                g.setColour (col (theme.knobBottom));
+                g.fillEllipse (cap.translated (0.0f, 2.5f));
+                g.setColour (col (theme.knobTop));
+                g.fillEllipse (cap);
+                g.setColour (col (theme.knobEdge));
+                g.drawEllipse (cap, 2.0f);
+                juce::Path pointer;
+                pointer.addRectangle (-3.0f, -knobR + 3.0f, 6.0f, knobR * 0.55f);
+                g.setColour (col (theme.pointer));
+                g.fillPath (pointer, juce::AffineTransform::rotation (angle).translated (cx, cy));
+                break;
+            }
+            case KnobStyle::Orbit:
+            {
+                const float lineW = 2.5f, arcR = radius - 6.0f;
+                const float dashes[] = { 2.0f, 4.0f };
+                juce::Path dashed;
+                juce::PathStrokeType (1.5f).createDashedStroke (dashed, arc (arcR, startAngle, endAngle), dashes, 2);
+                g.setColour (col (theme.track));
+                g.fillPath (dashed);
+                if (hasValue)
+                {
+                    g.setColour (col (theme.accent));
+                    g.strokePath (arc (arcR, a0, a1), { lineW, juce::PathStrokeType::curved, round });
+                }
+                const float knobR = arcR - 10.0f;
+                paintCap (g, cx, cy, knobR, alpha);
+                g.setColour (col (theme.pointer));
+                g.drawLine (juce::Line<float> (onCircle (knobR * 0.35f, angle), onCircle (knobR - 4.0f, angle)), 2.0f);
+                const auto planet = onCircle (arcR, angle);
+                g.setColour (col (theme.accent2.withAlpha (0.25f)));
+                g.fillEllipse (juce::Rectangle<float> (16.0f, 16.0f).withCentre (planet));
+                g.setColour (col (theme.accent2));
+                g.fillEllipse (juce::Rectangle<float> (8.0f, 8.0f).withCentre (planet));
+                break;
+            }
         }
-
-        const float knobR = arcR - 7.0f;
-        const auto knob = juce::Rectangle<float> (knobR * 2.0f, knobR * 2.0f).withCentre ({ cx, cy });
-        g.setGradientFill (juce::ColourGradient (juce::Colour (0xff323843).withMultipliedAlpha (alpha), cx, cy - knobR,
-                                                 juce::Colour (0xff1c1f25).withMultipliedAlpha (alpha), cx, cy + knobR, false));
-        g.fillEllipse (knob);
-        g.setColour (juce::Colour (0xff3d434f).withMultipliedAlpha (alpha));
-        g.drawEllipse (knob, 1.0f);
-
-        juce::Path pointer;
-        pointer.addRoundedRectangle (-1.5f, -knobR + 5.0f, 3.0f, knobR * 0.42f, 1.5f);
-        g.setColour (Colours::text.withMultipliedAlpha (alpha));
-        g.fillPath (pointer, juce::AffineTransform::rotation (angle).translated (cx, cy));
     }
 
     void drawToggleButton (juce::Graphics& g, juce::ToggleButton& b, bool highlighted, bool) override
     {
         const auto r = b.getLocalBounds().toFloat().reduced (1.0f);
         const bool on = b.getToggleState();
-        const float corner = r.getHeight() * 0.5f;
+        const float corner = juce::jmin (r.getHeight() * 0.5f, theme.corner * 2.0f);
 
-        g.setColour (on ? Colours::accent.withAlpha (0.16f) : Colours::panel);
+        g.setColour (on ? theme.accent.withAlpha (0.16f) : theme.panel);
         g.fillRoundedRectangle (r, corner);
-        g.setColour (on ? Colours::accent : Colours::panelEdge.brighter (highlighted ? 0.4f : 0.1f));
+        g.setColour (on ? theme.accent : theme.panelEdge.brighter (highlighted ? 0.4f : 0.1f));
         g.drawRoundedRectangle (r, corner, 1.2f);
 
         const float dot = 7.0f;
-        const auto dotArea = juce::Rectangle<float> (dot, dot).withCentre ({ r.getX() + corner + 2.0f, r.getCentreY() });
-        g.setColour (on ? Colours::accent : juce::Colour (0xff3a3f4a));
+        const auto dotArea = juce::Rectangle<float> (dot, dot).withCentre ({ r.getX() + r.getHeight() * 0.5f + 2.0f, r.getCentreY() });
+        g.setColour (on ? theme.accent : theme.track);
         g.fillEllipse (dotArea);
 
-        g.setColour (on ? Colours::text : Colours::dim);
+        g.setColour (on ? theme.text : theme.dim);
         g.setFont (font (11.5f, true));
-        g.drawText (b.getButtonText(), r.withTrimmedLeft (corner + 10.0f).withTrimmedRight (8.0f),
+        g.drawText (b.getButtonText(), r.withTrimmedLeft (r.getHeight() * 0.5f + 10.0f).withTrimmedRight (8.0f),
                     juce::Justification::centred);
     }
 
@@ -123,11 +287,11 @@ public:
     {
         const auto r = b.getLocalBounds().toFloat().reduced (0.5f);
         const bool on = b.getToggleState();
-        g.setColour (on ? Colours::accent : (highlighted ? Colours::panelEdge : Colours::background));
+        g.setColour (on ? theme.accent : (highlighted ? theme.panelEdge : theme.background));
         g.fillRoundedRectangle (r, r.getHeight() * 0.5f);
         if (! on)
         {
-            g.setColour (Colours::panelEdge.brighter (highlighted ? 0.3f : 0.0f));
+            g.setColour (theme.panelEdge.brighter (highlighted ? 0.3f : 0.0f));
             g.drawRoundedRectangle (r, r.getHeight() * 0.5f, 1.0f);
         }
     }
@@ -143,7 +307,27 @@ public:
     }
 
     juce::Font getLabelFont (juce::Label& l) override { return l.getFont(); }
+
+    const Theme theme;
+
+private:
+    void paintCap (juce::Graphics& g, float cx, float cy, float r, float alpha) const
+    {
+        const auto cap = juce::Rectangle<float> (r * 2.0f, r * 2.0f).withCentre ({ cx, cy });
+        g.setGradientFill (juce::ColourGradient (theme.knobTop.withMultipliedAlpha (alpha), cx, cy - r,
+                                                 theme.knobBottom.withMultipliedAlpha (alpha), cx, cy + r, false));
+        g.fillEllipse (cap);
+        g.setColour (theme.knobEdge.withMultipliedAlpha (alpha));
+        g.drawEllipse (cap, 1.0f);
+    }
 };
+
+// The theme of the LBAudio look-and-feel a component is drawn with (the house look if none is set).
+inline const Theme& themeOf (const juce::Component& c)
+{
+    if (auto* l = dynamic_cast<const LookAndFeel*> (&c.getLookAndFeel())) return l->theme;
+    return defaultTheme();
+}
 
 //==============================================================================
 class LevelMeter final : public juce::Component
@@ -175,16 +359,18 @@ public:
 
     void paint (juce::Graphics& g) override
     {
+        const auto& t = themeOf (*this);
         auto area = getLocalBounds().toFloat();
-        g.setColour (Colours::dim);
+        g.setColour (t.dim);
         g.setFont (font (11.0f, true));
         g.drawText (title, area.removeFromTop (16.0f), juce::Justification::centred);
 
         const auto readoutArea = area.removeFromBottom (18.0f);
         const auto bar = area.reduced (5.0f, 4.0f);
+        const float barCorner = juce::jmin (3.0f, t.corner * 0.5f);
 
-        g.setColour (Colours::background);
-        g.fillRoundedRectangle (bar, 3.0f);
+        g.setColour (t.meterBack);
+        g.fillRoundedRectangle (bar, barCorner);
 
         if (kind == Kind::Level)
         {
@@ -192,18 +378,18 @@ public:
             const float h = bar.getHeight() * norm (displayed);
             if (h > 0.5f)
             {
-                juce::ColourGradient grad (Colours::green, 0.0f, bar.getBottom(), Colours::red, 0.0f, bar.getY(), false);
-                grad.addColour (norm (-12.0f), Colours::green);
-                grad.addColour (norm (-3.0f), Colours::yellow);
+                juce::ColourGradient grad (t.meterLow, 0.0f, bar.getBottom(), t.meterHigh, 0.0f, bar.getY(), false);
+                grad.addColour (norm (-12.0f), t.meterLow);
+                grad.addColour (norm (-3.0f), t.meterMid);
                 g.setGradientFill (grad);
-                g.fillRoundedRectangle (bar.withTop (bar.getBottom() - h), 3.0f);
+                g.fillRoundedRectangle (bar.withTop (bar.getBottom() - h), barCorner);
             }
             if (peakHold > -60.0f)
             {
-                g.setColour (Colours::text.withAlpha (0.8f));
+                g.setColour (t.text.withAlpha (0.8f));
                 g.fillRect (bar.getX(), bar.getBottom() - bar.getHeight() * norm (peakHold) - 1.0f, bar.getWidth(), 2.0f);
             }
-            drawTicks (g, bar, { 0.0f, -12.0f, -24.0f, -36.0f, -48.0f }, [&] (float db) { return bar.getBottom() - bar.getHeight() * norm (db); });
+            drawTicks (g, t, bar, { 0.0f, -12.0f, -24.0f, -36.0f, -48.0f }, [&] (float db) { return bar.getBottom() - bar.getHeight() * norm (db); });
         }
         else
         {
@@ -211,13 +397,13 @@ public:
             const float h = bar.getHeight() * norm (displayed);
             if (h > 0.5f)
             {
-                g.setGradientFill (juce::ColourGradient (Colours::gr, 0.0f, bar.getY(), Colours::gr.darker (0.5f), 0.0f, bar.getBottom(), false));
-                g.fillRoundedRectangle (bar.withHeight (h), 3.0f);
+                g.setGradientFill (juce::ColourGradient (t.reduction, 0.0f, bar.getY(), t.reduction.darker (0.5f), 0.0f, bar.getBottom(), false));
+                g.fillRoundedRectangle (bar.withHeight (h), barCorner);
             }
-            drawTicks (g, bar, { 6.0f, 12.0f, 18.0f }, [&] (float db) { return bar.getY() + bar.getHeight() * norm (db); });
+            drawTicks (g, t, bar, { 6.0f, 12.0f, 18.0f }, [&] (float db) { return bar.getY() + bar.getHeight() * norm (db); });
         }
 
-        g.setColour (kind == Kind::GainReduction ? Colours::gr : Colours::text);
+        g.setColour (kind == Kind::GainReduction ? t.reduction : t.text);
         g.setFont (font (11.5f));
         juce::String readout;
         if (kind == Kind::Level) readout = displayed <= -60.0f ? "-inf" : juce::String (displayed, 1);
@@ -227,9 +413,9 @@ public:
 
 private:
     template <typename ToY>
-    static void drawTicks (juce::Graphics& g, juce::Rectangle<float> bar, std::initializer_list<float> dbs, ToY toY)
+    static void drawTicks (juce::Graphics& g, const Theme& t, juce::Rectangle<float> bar, std::initializer_list<float> dbs, ToY toY)
     {
-        g.setColour (Colours::panelEdge.withAlpha (0.9f));
+        g.setColour (t.panelEdge.withAlpha (0.9f));
         for (auto db : dbs)
             g.fillRect (bar.getX(), toY (db), bar.getWidth(), 1.0f);
     }
@@ -245,34 +431,69 @@ private:
 //==============================================================================
 // Shared painting helpers
 
-inline void paintPanel (juce::Graphics& g, juce::Rectangle<int> r)
+inline void paintPanel (juce::Graphics& g, juce::Rectangle<int> r, const Theme& t)
 {
-    g.setColour (Colours::panel);
-    g.fillRoundedRectangle (r.toFloat(), 8.0f);
-    g.setColour (Colours::panelEdge);
-    g.drawRoundedRectangle (r.toFloat().reduced (0.5f), 8.0f, 1.0f);
+    const auto f = r.toFloat();
+    switch (t.panelStyle)
+    {
+        case PanelStyle::Filled:
+            g.setColour (t.panel);
+            g.fillRoundedRectangle (f, t.corner);
+            g.setColour (t.panelEdge);
+            g.drawRoundedRectangle (f.reduced (0.5f), t.corner, 1.0f);
+            break;
+        case PanelStyle::Outline: // a glowing outline over a faint fill
+            g.setColour (t.panel);
+            g.fillRoundedRectangle (f, t.corner);
+            g.setColour (t.panelEdge.withAlpha (0.35f));
+            g.drawRoundedRectangle (f.reduced (1.5f), t.corner, 4.0f);
+            g.setColour (t.panelEdge);
+            g.drawRoundedRectangle (f.reduced (0.5f), t.corner, 1.2f);
+            break;
+        case PanelStyle::Screen: // a recessed screen set into the faceplate
+            g.setColour (t.panelEdge);
+            g.fillRoundedRectangle (f, t.corner);
+            g.setColour (t.panel);
+            g.fillRoundedRectangle (f.reduced (3.0f), juce::jmax (0.0f, t.corner - 1.5f));
+            break;
+    }
 }
 
+inline void paintPanel (juce::Graphics& g, juce::Rectangle<int> r) { paintPanel (g, r, defaultTheme()); }
+
 // The header strip every LBAudio plugin shares: NAME  TYPE | LBAudio
-inline void paintHeader (juce::Graphics& g, int width, const juce::String& name, const juce::String& type)
+inline void paintHeader (juce::Graphics& g, int width, const juce::String& name, const juce::String& type, const Theme& t)
 {
+    const auto nameFont = styledFont (t.titleSize, t.titleBold, t.titleItalic, t.titleKerning);
+    const auto typeFont = styledFont (11.0f, true, false, t.typeKerning);
+    const auto brandFont = font (13.0f, true);
+    const auto upperName = name.toUpperCase(), upperType = type.toUpperCase();
+    const int nameW = juce::GlyphArrangement::getStringWidthInt (nameFont, upperName) + 18;
+    const int typeW = juce::GlyphArrangement::getStringWidthInt (typeFont, upperType) + 16;
+    const int total = nameW + typeW + 14 + 70;
+
     auto header = juce::Rectangle<int> (0, 0, width, 56).reduced (20, 0);
-    g.setColour (Colours::text);
-    g.setFont (font (24.0f, true));
-    const int nameW = juce::GlyphArrangement::getStringWidthInt (font (24.0f, true), name.toUpperCase()) + 18;
-    g.drawText (name.toUpperCase(), header.removeFromLeft (nameW), juce::Justification::centredLeft);
-    g.setColour (Colours::accent);
-    g.setFont (font (11.0f, true));
-    const int typeW = juce::GlyphArrangement::getStringWidthInt (font (11.0f, true), type.toUpperCase()) + 16;
-    g.drawText (type.toUpperCase(), header.removeFromLeft (typeW).translated (0, 3), juce::Justification::centredLeft);
-    g.setColour (Colours::panelEdge.brighter (0.3f));
+    if (t.titleCentred) header = header.withSizeKeepingCentre (total, 56);
+
+    g.setColour (t.headerText);
+    g.setFont (nameFont);
+    g.drawText (upperName, header.removeFromLeft (nameW), juce::Justification::centredLeft);
+    g.setColour (t.headerType);
+    g.setFont (typeFont);
+    g.drawText (upperType, header.removeFromLeft (typeW).translated (0, 3), juce::Justification::centredLeft);
+    g.setColour (t.headerLine.brighter (0.3f));
     g.fillRect (header.getX(), header.getCentreY() - 8, 1, 18);
     header.removeFromLeft (14);
-    g.setColour (Colours::dim);
-    g.setFont (font (13.0f, true));
+    g.setColour (t.headerBrand);
+    g.setFont (brandFont);
     g.drawText ("LBAudio", header.removeFromLeft (100).translated (0, 2), juce::Justification::centredLeft);
-    g.setColour (Colours::panelEdge);
+    g.setColour (t.headerLine);
     g.drawHorizontalLine (56, 0.0f, (float) width);
+}
+
+inline void paintHeader (juce::Graphics& g, int width, const juce::String& name, const juce::String& type)
+{
+    paintHeader (g, width, name, type, defaultTheme());
 }
 
 //==============================================================================
@@ -298,6 +519,11 @@ public:
         label.setInterceptsMouseClicks (false, false);
         addAndMakeVisible (slider);
         addAndMakeVisible (label);
+    }
+
+    void lookAndFeelChanged() override
+    {
+        label.setColour (juce::Label::textColourId, themeOf (*this).dim);
     }
 
     void resized() override
@@ -351,11 +577,13 @@ public:
 
     void paint (juce::Graphics& g) override
     {
+        const auto& t = themeOf (*this);
         auto r = getLocalBounds().toFloat().reduced (1.0f);
-        g.setColour (Colours::background);
-        g.fillRoundedRectangle (r, r.getHeight() * 0.5f);
-        g.setColour (Colours::panelEdge);
-        g.drawRoundedRectangle (r, r.getHeight() * 0.5f, 1.0f);
+        const float corner = juce::jmin (r.getHeight() * 0.5f, t.corner * 2.0f);
+        g.setColour (t.background);
+        g.fillRoundedRectangle (r, corner);
+        g.setColour (t.panelEdge);
+        g.drawRoundedRectangle (r, corner, 1.0f);
         const float w = r.getWidth() / (float) juce::jmax (1, choices.size());
         for (int i = 0; i < choices.size(); ++i)
         {
@@ -363,17 +591,17 @@ public:
             const bool on = i == selected;
             if (on)
             {
-                g.setColour (Colours::accent);
-                g.fillRoundedRectangle (cell, cell.getHeight() * 0.5f);
+                g.setColour (t.accent);
+                g.fillRoundedRectangle (cell, juce::jmin (cell.getHeight() * 0.5f, t.corner * 2.0f));
             }
-            g.setColour (on ? juce::Colour (0xff07211e) : Colours::dim);
+            g.setColour (on ? t.onAccent : t.dim);
             g.setFont (font (11.5f, true));
             g.drawText (choices[i].toUpperCase(), cell, juce::Justification::centred);
         }
         if (hasKeyboardFocus (false))
         {
-            g.setColour (Colours::accent.withAlpha (0.6f));
-            g.drawRoundedRectangle (r, r.getHeight() * 0.5f, 1.5f);
+            g.setColour (t.accent.withAlpha (0.6f));
+            g.drawRoundedRectangle (r, corner, 1.5f);
         }
     }
 
