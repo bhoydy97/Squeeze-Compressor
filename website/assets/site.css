@@ -645,9 +645,9 @@ footer a:hover { color: var(--text); }
 .price-table tr.group th { border-top: 0; padding-bottom: 4px; }
 
 /* ==== Site theme: the homepage and the pages about LBAudio itself ====================
-   The brand is the rack, not a plugin: pale anodised alloy, ink and one cobalt accent, so the
-   ten plugins' own colourways are the only other colour on the page. Instrument Sans throughout,
-   condensed for display and full width for reading. */
+   The brand is the rack, not a plugin: each plugin sits in it as a 1U unit in its own colours.
+   Instrument Sans throughout, condensed for display and full width for reading. The colours are
+   set at the end of this section. */
 @font-face {
   font-family: "Instrument Sans";
   src: url("fonts/instrumentsans-var.woff") format("woff");
@@ -690,8 +690,9 @@ footer a:hover { color: var(--text); }
 /* Hero: the headline is the whole width; what it is and what to do sit underneath it */
 .site-hero .wrap { padding-block: clamp(44px, 7vw, 96px) clamp(36px, 5vw, 64px); }
 .site-title {
-  font-size: clamp(3.2rem, 9.6vw, 8.6rem); line-height: 0.9; letter-spacing: -0.015em; max-width: 15ch;
+  font-size: clamp(3.2rem, 9.6vw, 8.6rem); line-height: 0.9; letter-spacing: -0.015em;
 }
+.site-title span { display: block; }
 .site-hero-foot {
   display: flex; justify-content: space-between; align-items: flex-end; gap: 24px 48px; flex-wrap: wrap;
   margin-top: clamp(24px, 3vw, 40px);
@@ -803,27 +804,40 @@ footer a:hover { color: var(--text); }
   color: var(--text);
 }
 
-/* Site theme, take 2: ink instead of cobalt for the accent, and a brushed-alloy sheen behind everything */
+/* Site theme, final: near black with a vibrant warm gradient (coral, hot pink, amber), light type and
+   white buttons. The palette above stays as the base; these values replace its colours. */
 .site {
-  --teal: #131519; --amber: #131519; --accent-hover: #3a3f48; --on-accent: #ffffff;
-  --panel: rgba(255, 255, 255, .55);
+  --bg: #0b0b0d; --text: #f4f2f0; --muted: #b6b3ba; --soft: #e0dddb; --line: rgba(255, 255, 255, .14);
+  --panel: rgba(255, 255, 255, .06); --well: rgba(255, 255, 255, .04); --axis: rgba(255, 255, 255, .12);
+  --chip: rgba(255, 255, 255, .06); --code-bg: rgba(255, 255, 255, .08); --shadow: rgba(0, 0, 0, .6);
+  --teal: #f4f2f0; --amber: #f4f2f0; --on-accent: #0b0b0d; --accent-hover: #ffffff;
+  color-scheme: dark;
 }
 body.site {
-  background-color: #d2d6dc;
+  color: var(--text);
+  background-color: #0b0b0d;
   background-image:
-    linear-gradient(112deg, rgba(255, 255, 255, 0) 38%, rgba(255, 255, 255, .55) 50%, rgba(255, 255, 255, 0) 62%),
-    radial-gradient(1100px 760px at 95% -140px, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0) 70%),
-    radial-gradient(1000px 900px at -10% 700px, rgba(230, 200, 172, .9), rgba(230, 200, 172, 0) 70%),
-    radial-gradient(1100px 900px at 108% 1600px, rgba(236, 214, 196, .7), rgba(236, 214, 196, 0) 70%),
-    linear-gradient(180deg, #eef0f2 0%, #dde0e4 30%, #d0d4da 65%, #c6cbd2 100%);
-  background-size: 100% 1100px, auto, auto, auto, auto;
+    radial-gradient(520px 380px at 84% 20px, rgba(255, 196, 64, .45), rgba(255, 196, 64, 0) 70%),
+    radial-gradient(1050px 720px at 94% -60px, rgba(255, 84, 36, .9), rgba(255, 84, 36, 0) 70%),
+    radial-gradient(860px 760px at 0% 360px, rgba(255, 28, 116, .62), rgba(255, 28, 116, 0) 70%),
+    radial-gradient(1000px 760px at 104% 1650px, rgba(255, 52, 100, .32), rgba(255, 52, 100, 0) 70%),
+    radial-gradient(900px 700px at -4% 2350px, rgba(255, 110, 36, .26), rgba(255, 110, 36, 0) 70%),
+    linear-gradient(180deg, #120d12 0%, #0b0b0d 45%, #08080a 100%);
   background-repeat: no-repeat;
 }
-.site .top { background: rgba(238, 240, 242, .72); }
-.site .brand span { color: #5d636d; }
-.site .tag { background: var(--text); }
+.site .top { background: rgba(11, 11, 13, .62); }
+.site .brand span {
+  background: linear-gradient(90deg, #ff5630, #ff2878 70%); -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.site .tag { background: var(--text); color: #0b0b0d; }
+.site .btn-primary [data-price] { border-left-color: rgba(11, 11, 13, .3); }
+.site .btn-ghost { border-color: rgba(255, 255, 255, .38); }
+.site .btn-ghost:hover { border-color: #ffffff; }
+.site .deals, .site .deal-best, .site .principles div { border-color: rgba(255, 255, 255, .6); }
+.site .unit { box-shadow: 0 1px 0 rgba(255, 255, 255, .06), 0 3px 10px rgba(0, 0, 0, .5); }
+.site .trademarks { color: #8d8a93; }
 .site a:not(.btn):not(.unit):not(.rack-bundle):not(.brand):not(.nav-link):not(.card-link) { text-decoration-thickness: 1px; }
 .site .rack-save, .site .deal-save { color: var(--text); }
-.site .rack-bundle { backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
-.site .legal .summary { backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
-.site .promo-tag { color: #ffffff; }
+.site .rack-bundle, .site .legal .summary { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.site .rack-bundle:hover { border-color: rgba(255, 255, 255, .6); }
+.site .promo-tag { color: #0b0b0d; }
