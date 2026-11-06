@@ -772,6 +772,8 @@ footer a:hover { color: var(--text); }
 .rack-bundle strong { font-weight: 600; font-variant-numeric: tabular-nums; }
 .rack-save { color: var(--teal); font-weight: 600; }
 .rack-bundle:hover { border-color: var(--text); }
+.rack-complete { margin-top: clamp(40px, 5vw, 64px); }
+.rack-complete .rack-head p { max-width: none; }
 
 /* Bundles: a price list, not more cards */
 .deals { border-top: 1px solid var(--text); }
