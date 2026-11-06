@@ -15,11 +15,11 @@ window.LBAUDIO_CONFIG = {
     haze:    { payhipProduct: "meyHn", price: "\u00a315" },
     ceiling: { payhipProduct: "drU5n", price: "\u00a315" },
     // The second range. Paste each Payhip code in when the product is set up; until then the site says "Coming soon".
-    drift:   { payhipProduct: "", price: "\u00a315" },
-    hush:    { payhipProduct: "", price: "\u00a315" },
-    spread:  { payhipProduct: "", price: "\u00a315" },
-    snap:    { payhipProduct: "", price: "\u00a315" },
-    orbit:   { payhipProduct: "", price: "\u00a315" },
+    drift:   { payhipProduct: "Vhp32", price: "\u00a315" },
+    hush:    { payhipProduct: "E59sg", price: "\u00a315" },
+    spread:  { payhipProduct: "zEZPS", price: "\u00a315" },
+    snap:    { payhipProduct: "MVxo4", price: "\u00a315" },
+    orbit:   { payhipProduct: "WnV52", price: "\u00a315" },
     // Bundles. Their savings on the website are worked out from the prices above automatically.
     // "bundle" is the core 5 (its Payhip code stays the same).
     bundle:   { payhipProduct: "z0NFa", price: "\u00a360", includes: ["squeeze", "carve", "ember", "haze", "ceiling"] },
