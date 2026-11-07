@@ -908,3 +908,6 @@ body.site {
 .fix-tip strong { color: var(--text); font-weight: 600; }
 .fix-cta { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 20px; }
 @media (prefers-reduced-motion: reduce) { .fix-chip { transition: none; } }
+
+/* A price that is not set yet stays out of the layout */
+.unit-price[hidden] { display: none; }

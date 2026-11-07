@@ -21,7 +21,7 @@ window.LBAUDIO_CONFIG = {
     snap:    { payhipProduct: "MVxo4", price: "\u00a315" },
     orbit:   { payhipProduct: "WnV52", price: "\u00a315" },
     // Multiband. Sold on its own, in no bundle. "Coming soon" until its Payhip code is in.
-    halation:   { payhipProduct: "", price: "\u00a340" },
+    halation:   { payhipProduct: "", price: "" },   // price to be decided
     // Bundles. Their savings on the website are worked out from the prices above automatically.
     // "bundle" is the core 5 (its Payhip code stays the same).
     bundle:   { payhipProduct: "z0NFa", price: "\u00a360", includes: ["squeeze", "carve", "ember", "haze", "ceiling"] },
