@@ -801,8 +801,9 @@ footer a:hover { color: var(--text); }
 .u-bundle-fx       { --face: #141217; --ink: #f2eef8; --sub: #b0a6bf; --led: #ff9a3c; }
 .u-bundle-complete { --face: #151215; --ink: #f4f2f0; --sub: #b3a9ae; --led: #ff2878; }
 .rack-bundle-unit .unit-shot { opacity: .85; -webkit-mask-image: linear-gradient(90deg, transparent, #000 14%); mask-image: linear-gradient(90deg, transparent, #000 14%); }
-.u-sampler { --face: #19151a; --ink: #f4eef0; --sub: #a89aa3; --led: #ff1c74; }
-.u-sampler .unit-price { color: var(--sub); font-weight: 600; }
+.u-splinter { --face: #070908; --ink: #e6f2e8; --sub: #86a08c; --led: #3dff7a; }
+.u-splinter .unit-name { color: #3dff7a; }
+.u-splinter .unit-price { color: var(--sub); font-weight: 600; }
 
 .rack-bundle {
   display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
