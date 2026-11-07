@@ -793,8 +793,16 @@ footer a:hover { color: var(--text); }
 }
 .rack-new { margin-top: clamp(40px, 5vw, 64px); }
 .rack-new .rack-head p { max-width: 62ch; }
-.rack-new .rack { max-width: calc(50% - clamp(12px, 2vw, 28px)); }
-@media (max-width: 900px) { .rack-new .rack { max-width: none; } }
+.rack-new .rack, .rack-complete .rack { max-width: calc(50% - clamp(12px, 2vw, 28px)); }
+@media (max-width: 900px) { .rack-new .rack, .rack-complete .rack { max-width: none; } }
+/* Bundles sit in the rack too: one unit each, its faceplate a slice of every plugin inside */
+.rack-bundle-unit { margin-top: 12px; }
+.u-bundle-core     { --face: #161920; --ink: #e8ebf0; --sub: #9aa3b2; --led: #5ad1c3; }
+.u-bundle-fx       { --face: #141217; --ink: #f2eef8; --sub: #b0a6bf; --led: #ff9a3c; }
+.u-bundle-complete { --face: #151215; --ink: #f4f2f0; --sub: #b3a9ae; --led: #ff2878; }
+.rack-bundle-unit .unit-shot { opacity: .85; -webkit-mask-image: linear-gradient(90deg, transparent, #000 14%); mask-image: linear-gradient(90deg, transparent, #000 14%); }
+.u-sampler { --face: #19151a; --ink: #f4eef0; --sub: #a89aa3; --led: #ff1c74; }
+.u-sampler .unit-price { color: var(--sub); font-weight: 600; }
 
 .rack-bundle {
   display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
