@@ -911,3 +911,39 @@ body.site {
 
 /* A price that is not set yet stays out of the layout */
 .unit-price[hidden] { display: none; }
+
+/* Splinter: black and green, with faint scanlines */
+.theme-splinter {
+  --bg: #070908; --panel: #0d120e; --line: #1c2a1f; --text: #e6f2e8; --muted: #86a08c; --soft: #c4d8c8;
+  --teal: #3dff7a; --amber: #b6ffcf; --on-accent: #04140a; --accent-hover: #7dffa8;
+  --well: #0a0f0b; --axis: #1b2a1e; --chip: rgba(13, 18, 14, .75); --code-bg: #101a12;
+  --glow: rgba(61, 255, 122, .10); --glow2: rgba(18, 163, 71, .08);
+}
+.theme-splinter .hero::before {
+  background:
+    repeating-linear-gradient(0deg, rgba(61, 255, 122, .03) 0 1px, transparent 1px 3px),
+    radial-gradient(ellipse 42% 60% at 78% 42%, rgba(61, 255, 122, .13), transparent 70%),
+    linear-gradient(180deg, #070908 0%, #0a0f0b 100%);
+}
+.theme-splinter .hero::after {
+  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px;
+  background: linear-gradient(90deg, #12a347, #3dff7a 55%, #b6ffcf);
+}
+.theme-splinter .wordmark { color: #3dff7a; font-stretch: 112%; letter-spacing: 0.04em; font-size: clamp(2.6rem, 6.8vw, 5rem); text-shadow: 0 0 34px rgba(61, 255, 122, .35); }
+.theme-splinter .wordmark small { font-size: clamp(0.85rem, 0.24em, 1.2rem); }
+.theme-splinter .wordmark small { color: var(--muted); text-shadow: none; }
+.theme-splinter .hero-shot img { box-shadow: 0 30px 80px rgba(0, 0, 0, .6), 0 0 0 1px #1c2a1f, 0 0 70px rgba(61, 255, 122, .08); }
+.shot-caption { margin-top: 12px; font-size: 0.82rem; color: var(--muted); text-align: center; }
+.feature-grid { row-gap: 36px; }
+.feature-grid div:nth-child(3) h3::before { background: var(--teal); }
+.steps { list-style: none; margin: 0; padding: 0; counter-reset: step; }
+.steps li { border-top: 1px solid var(--line); padding-top: 20px; counter-increment: step; }
+.steps li h3::before {
+  content: counter(step); display: inline-grid; place-items: center; width: 26px; height: 26px; margin-right: 10px;
+  border-radius: 50%; background: var(--teal); color: var(--on-accent); font-size: 0.85rem; font-weight: 800; vertical-align: 1px;
+}
+.steps p { color: var(--muted); margin-top: 8px; }
+.spec-two tbody th { width: 26%; }
+@media (max-width: 640px) { .spec-two tr { grid-template-columns: 1fr; } }
+.u-splinter[href]:hover .unit-name { text-shadow: 0 0 18px rgba(61, 255, 122, .5); }
+.rack-soon .rack-head p a { color: #3dff7a; white-space: nowrap; }
