@@ -1,12 +1,12 @@
 #pragma once
 
-// Prism's factory presets. Each lists only what differs from the defaults (every band untouched, splits at
+// Halation's factory presets. Each lists only what differs from the defaults (every band untouched, splits at
 // 120 Hz, 1 kHz and 6 kHz), using parameter IDs and plain values (Hz, dB, ms, %, 0/1).
 
 #include <utility>
 #include <vector>
 
-namespace prism
+namespace halation
 {
 struct Preset
 {
@@ -103,4 +103,4 @@ inline const std::vector<Preset>& factoryPresets()
     };
     return presets;
 }
-} // namespace prism
+} // namespace halation

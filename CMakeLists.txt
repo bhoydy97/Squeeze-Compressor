@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(LBAudio VERSION 1.2.0 LANGUAGES C CXX)
+project(LBAudio VERSION 1.2.1 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -22,7 +22,7 @@ FetchContent_MakeAvailable(JUCE)
 # ------------------------------------------------------------------------------
 set(LBAUDIO_VERSION "${PROJECT_VERSION}" CACHE STRING "Version the DAW shows for every plugin (CI sets it from the release tag)")
 set(LBAUDIO_FORMATS VST3 AU CACHE STRING "Plugin formats to build (AU is only built on macOS)")
-set(LBAUDIO_PLUGINS Squeeze Carve Ember Haze Ceiling Drift Hush Spread Snap Orbit Prism CACHE STRING "Which plugins to build")
+set(LBAUDIO_PLUGINS Squeeze Carve Ember Haze Ceiling Drift Hush Spread Snap Orbit Halation CACHE STRING "Which plugins to build")
 option(LBAUDIO_COPY_AFTER_BUILD "Copy plugins into your system plugin folders after building" OFF)
 option(LBAUDIO_BUILD_TESTS "Build the test tools" OFF)
 option(LBAUDIO_LTO "Link-time optimisation for release builds (slower to build)" ON)

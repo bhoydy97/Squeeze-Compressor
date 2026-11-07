@@ -1,11 +1,11 @@
 #pragma once
 
-// Prism: four-band compressor with an exciter in every band. Plain C++ shared by the audio code, the display
+// Halation: four-band compressor with an exciter in every band. Plain C++ shared by the audio code, the display
 // and the tests.
 //
 // Crossover: Linkwitz-Riley 24 dB/oct (two Butterworth sections) at three split points. The middle split comes
 // first; each half is then split again, and each half also passes through an all-pass at the other half's split,
-// so all four bands carry the same phase. Their sum is an all-pass: with every band left alone, Prism changes no
+// so all four bands carry the same phase. Their sum is an all-pass: with every band left alone, Halation changes no
 // level at any frequency. The dry path for Mix goes through the same three all-passes, so blending stays flat too.
 //
 //   x -> LR(mid) -> low half  -> LR(low)  -> [Low, Low Mid] -> AP(high)
@@ -24,7 +24,7 @@
 #include <array>
 #include <cmath>
 
-namespace prism
+namespace halation
 {
 constexpr int numBands = 4;
 constexpr double butterworthQ = 0.70710678118654752;
@@ -213,4 +213,4 @@ struct Params
     std::array<BandParams, numBands> bands;
     float inputDb = 0.0f, outputDb = 0.0f, mix = 1.0f; // mix 0..1
 };
-} // namespace prism
+} // namespace halation

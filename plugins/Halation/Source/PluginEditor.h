@@ -4,10 +4,10 @@
 #include <juce_dsp/juce_dsp.h>
 #include "PluginProcessor.h"
 
-// Prism's look: light through a prism. A deep graphite faceplate, and each band in its own colour of the
+// Halation's look: the glow around a bright light. A deep graphite faceplate, and each band in its own colour of the
 // spectrum, from warm red for the lows to sky blue for the highs.
-lbaudio::ui::Theme prismTheme();
-juce::Colour prismBandColour (int band);
+lbaudio::ui::Theme halationTheme();
+juce::Colour halationBandColour (int band);
 
 // The spectrum, split into the four bands: the input faintly behind the output, each band's gain reduction
 // hanging from the top, and the three split points as handles you drag.
@@ -16,8 +16,8 @@ class BandSpectrum final : public juce::Component
 public:
     explicit BandSpectrum (juce::AudioProcessorValueTreeState& state) : apvts (state) {}
 
-    void setState (const prism::Params& p, const std::vector<float>& inDb, const std::vector<float>& outDb,
-                   int fftSize, double sampleRate, const std::array<float, prism::numBands>& reductionDb)
+    void setState (const halation::Params& p, const std::vector<float>& inDb, const std::vector<float>& outDb,
+                   int fftSize, double sampleRate, const std::array<float, halation::numBands>& reductionDb)
     {
         params = p; spectrumIn = inDb; spectrumOut = outDb; size = fftSize; fs = sampleRate; reduction = reductionDb;
         repaint();
@@ -38,11 +38,11 @@ private:
     juce::RangedAudioParameter* splitParam (int i) const;
 
     juce::AudioProcessorValueTreeState& apvts;
-    prism::Params params;
+    halation::Params params;
     std::vector<float> spectrumIn, spectrumOut;
     int size = 0, dragging = -1, hover = -1;
     double fs = 48000.0;
-    std::array<float, prism::numBands> reduction {};
+    std::array<float, halation::numBands> reduction {};
 };
 
 // One band's controls: name and range, Solo and Bypass, six knobs and its gain-reduction meter.
@@ -71,7 +71,7 @@ private:
 class PresetBar final : public juce::Component
 {
 public:
-    explicit PresetBar (PrismAudioProcessor& p);
+    explicit PresetBar (HalationAudioProcessor& p);
     void refresh();
     void resized() override;
 
@@ -80,16 +80,16 @@ private:
     void step (int delta);
     void save();
 
-    PrismAudioProcessor& processor;
+    HalationAudioProcessor& processor;
     juce::TextButton prev { "<" }, next { ">" }, name, saveButton { "SAVE" };
     juce::String shownName;
 };
 
-class PrismAudioProcessorEditor final : public juce::AudioProcessorEditor, private juce::Timer
+class HalationAudioProcessorEditor final : public juce::AudioProcessorEditor, private juce::Timer
 {
 public:
-    explicit PrismAudioProcessorEditor (PrismAudioProcessor&);
-    ~PrismAudioProcessorEditor() override;
+    explicit HalationAudioProcessorEditor (HalationAudioProcessor&);
+    ~HalationAudioProcessorEditor() override;
 
     void paint (juce::Graphics&) override;
     void resized() override;
@@ -100,15 +100,15 @@ public:
 private:
     void timerCallback() override { refreshFromProcessor(); }
 
-    PrismAudioProcessor& processorRef;
-    lbaudio::ui::LookAndFeel lnf { prismTheme() };
+    HalationAudioProcessor& processorRef;
+    lbaudio::ui::LookAndFeel lnf { halationTheme() };
 
     PresetBar presets { processorRef };
     BandSpectrum spectrumView { processorRef.apvts };
-    std::array<std::unique_ptr<BandStrip>, prism::numBands> strips;
-    lbaudio::ui::LabelledKnob input  { processorRef.apvts, prism::ids::input,  "INPUT", true };
-    lbaudio::ui::LabelledKnob output { processorRef.apvts, prism::ids::output, "OUTPUT", true };
-    lbaudio::ui::LabelledKnob mix    { processorRef.apvts, prism::ids::mix,    "MIX" };
+    std::array<std::unique_ptr<BandStrip>, halation::numBands> strips;
+    lbaudio::ui::LabelledKnob input  { processorRef.apvts, halation::ids::input,  "INPUT", true };
+    lbaudio::ui::LabelledKnob output { processorRef.apvts, halation::ids::output, "OUTPUT", true };
+    lbaudio::ui::LabelledKnob mix    { processorRef.apvts, halation::ids::mix,    "MIX" };
     lbaudio::ui::LevelMeter inMeter  { lbaudio::ui::LevelMeter::Kind::Level, "IN" };
     lbaudio::ui::LevelMeter outMeter { lbaudio::ui::LevelMeter::Kind::Level, "OUT" };
     juce::Rectangle<int> globalPanel;
@@ -120,5 +120,5 @@ private:
     std::vector<float> inDb = std::vector<float> ((size_t) fftSize / 2, -120.0f);
     std::vector<float> outDb = std::vector<float> ((size_t) fftSize / 2, -120.0f);
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PrismAudioProcessorEditor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (HalationAudioProcessorEditor)
 };

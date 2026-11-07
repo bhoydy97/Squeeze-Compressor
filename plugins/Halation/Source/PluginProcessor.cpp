@@ -19,14 +19,14 @@ juce::String formatRatio (float v, int) { return juce::String (v, v < 10.0f ? 1 
 
 std::unique_ptr<juce::dsp::Oversampling<float>> makeOversampler (int channels)
 {
-    return std::make_unique<juce::dsp::Oversampling<float>> ((size_t) channels, (size_t) PrismAudioProcessor::oversamplingStages,
+    return std::make_unique<juce::dsp::Oversampling<float>> ((size_t) channels, (size_t) HalationAudioProcessor::oversamplingStages,
                                                             juce::dsp::Oversampling<float>::filterHalfBandFIREquiripple, true, true);
 }
 } // namespace
 
-juce::AudioProcessorValueTreeState::ParameterLayout PrismAudioProcessor::createParameterLayout()
+juce::AudioProcessorValueTreeState::ParameterLayout HalationAudioProcessor::createParameterLayout()
 {
-    using namespace prism;
+    using namespace halation;
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
     layout.add (floatParam (ids::split1, "Low Split", frequencyRange (40.0f, 600.0f), 120.0f, formatHz, parseHz));
     layout.add (floatParam (ids::split2, "Mid Split", frequencyRange (250.0f, 5000.0f), 1000.0f, formatHz, parseHz));
@@ -53,21 +53,21 @@ juce::AudioProcessorValueTreeState::ParameterLayout PrismAudioProcessor::createP
     return layout;
 }
 
-PrismAudioProcessor::PrismAudioProcessor()
+HalationAudioProcessor::HalationAudioProcessor()
     : AudioProcessor (BusesProperties()
                           .withInput  ("Input",  juce::AudioChannelSet::stereo(), true)
                           .withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
-      apvts (*this, nullptr, "PrismState", createParameterLayout())
+      apvts (*this, nullptr, "HalationState", createParameterLayout())
 {
-    pSplit[0] = apvts.getRawParameterValue (prism::ids::split1);
-    pSplit[1] = apvts.getRawParameterValue (prism::ids::split2);
-    pSplit[2] = apvts.getRawParameterValue (prism::ids::split3);
-    pInput = apvts.getRawParameterValue (prism::ids::input);
-    pOutput = apvts.getRawParameterValue (prism::ids::output);
-    pMix = apvts.getRawParameterValue (prism::ids::mix);
-    for (int b = 0; b < prism::numBands; ++b)
+    pSplit[0] = apvts.getRawParameterValue (halation::ids::split1);
+    pSplit[1] = apvts.getRawParameterValue (halation::ids::split2);
+    pSplit[2] = apvts.getRawParameterValue (halation::ids::split3);
+    pInput = apvts.getRawParameterValue (halation::ids::input);
+    pOutput = apvts.getRawParameterValue (halation::ids::output);
+    pMix = apvts.getRawParameterValue (halation::ids::mix);
+    for (int b = 0; b < halation::numBands; ++b)
         for (int k = 0; k < 8; ++k)
-            pBand[(size_t) b][(size_t) k] = apvts.getRawParameterValue (prism::ids::band (b, prism::ids::bandControls[k]));
+            pBand[(size_t) b][(size_t) k] = apvts.getRawParameterValue (halation::ids::band (b, halation::ids::bandControls[k]));
     for (auto& m : meterReduction) m.store (0.0f);
 
     // Report latency from the start: hosts may ask before prepareToPlay. It doesn't depend on the sample rate.
@@ -76,11 +76,11 @@ PrismAudioProcessor::PrismAudioProcessor()
     setLatencySamples (juce::roundToInt (probe->getLatencyInSamples()));
 }
 
-prism::Params PrismAudioProcessor::currentParams() const
+halation::Params HalationAudioProcessor::currentParams() const
 {
-    prism::Params p;
+    halation::Params p;
     p.splits = { pSplit[0]->load(), pSplit[1]->load(), pSplit[2]->load() };
-    for (int b = 0; b < prism::numBands; ++b)
+    for (int b = 0; b < halation::numBands; ++b)
     {
         const auto& v = pBand[(size_t) b];
         auto& band = p.bands[(size_t) b];
@@ -92,7 +92,7 @@ prism::Params PrismAudioProcessor::currentParams() const
     return p;
 }
 
-void PrismAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
+void HalationAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
     fs = sampleRate;
     osFs = fs * (1 << oversamplingStages);
@@ -109,19 +109,19 @@ void PrismAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     for (auto& c : compressors) c.prepare (osFs, 2);
 
     smoothCoeff = 1.0f - (float) std::exp (-1.0 / (0.02 * fs));
-    exciteAttack = std::exp (-1.0 / (prism::exciteAttackS * osFs));
-    exciteRelease = std::exp (-1.0 / (prism::exciteReleaseS * osFs));
+    exciteAttack = std::exp (-1.0 / (halation::exciteAttackS * osFs));
+    exciteRelease = std::exp (-1.0 / (halation::exciteReleaseS * osFs));
 
     const auto p = currentParams();
     inGain = juce::Decibels::decibelsToGain (p.inputDb);
     outGain = juce::Decibels::decibelsToGain (p.outputDb);
     mix = p.mix;
-    for (int b = 0; b < prism::numBands; ++b) excite[(size_t) b] = p.bands[(size_t) b].excite;
+    for (int b = 0; b < halation::numBands; ++b) excite[(size_t) b] = p.bands[(size_t) b].excite;
     currentSplits = { -1.0f, -1.0f, -1.0f };
     reset();
 }
 
-void PrismAudioProcessor::reset()
+void HalationAudioProcessor::reset()
 {
     if (oversampler) oversampler->reset();
     for (auto& x : crossover) x.reset();
@@ -129,14 +129,14 @@ void PrismAudioProcessor::reset()
     for (auto& e : exciters) e.reset();
 }
 
-bool PrismAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
+bool HalationAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
 {
     const auto out = layouts.getMainOutputChannelSet();
     return (out == juce::AudioChannelSet::mono() || out == juce::AudioChannelSet::stereo())
            && layouts.getMainInputChannelSet() == out;
 }
 
-void PrismAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
+void HalationAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
 {
     juce::ScopedNoDenormals noDenormals;
     const int n = buffer.getNumSamples();
@@ -147,7 +147,7 @@ void PrismAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
     const auto p = currentParams();
 
     // Split points: ordered, then glide (in octaves) so dragging them doesn't zip
-    const auto target = prism::orderedSplits (p.splits, fs);
+    const auto target = halation::orderedSplits (p.splits, fs);
     auto next = target;
     if (currentSplits.low > 0.0f)
     {
@@ -160,12 +160,12 @@ void PrismAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
     {
         currentSplits = next;
         for (auto& x : crossover) x.set (currentSplits, osFs);
-        const float lowEdges[prism::numBands] = { 20.0f, currentSplits.low, currentSplits.mid, currentSplits.high };
-        for (int b = 0; b < prism::numBands; ++b) exciters[(size_t) b].setLowEdge (lowEdges[b], osFs);
+        const float lowEdges[halation::numBands] = { 20.0f, currentSplits.low, currentSplits.mid, currentSplits.high };
+        for (int b = 0; b < halation::numBands; ++b) exciters[(size_t) b].setLowEdge (lowEdges[b], osFs);
     }
 
-    for (int b = 0; b < prism::numBands; ++b)
-        compressors[(size_t) b].setParams (prism::compressorParams (p.bands[(size_t) b]));
+    for (int b = 0; b < halation::numBands; ++b)
+        compressors[(size_t) b].setParams (halation::compressorParams (p.bands[(size_t) b]));
 
     for (int start = 0; start < n; start += maxChunk)
     {
@@ -175,7 +175,7 @@ void PrismAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
     }
 }
 
-void PrismAudioProcessor::processChunk (float* const* io, int channels, int n, const prism::Params& p)
+void HalationAudioProcessor::processChunk (float* const* io, int channels, int n, const halation::Params& p)
 {
     // 1) Input level
     const float inTarget = juce::Decibels::decibelsToGain (p.inputDb);
@@ -195,25 +195,25 @@ void PrismAudioProcessor::processChunk (float* const* io, int channels, int n, c
     juce::dsp::AudioBlock<float> block (io, (size_t) channels, (size_t) n);
     auto up = oversampler->processSamplesUp (block);
     const int upN = (int) up.getNumSamples();
-    std::array<float, prism::numBands> bands {};
+    std::array<float, halation::numBands> bands {};
     for (int ch = 0; ch < channels; ++ch)
     {
         const float* x = up.getChannelPointer ((size_t) ch);
         float* dry = dryBuffer.getWritePointer (ch);
-        float* out[prism::numBands];
-        for (int b = 0; b < prism::numBands; ++b) out[b] = bandBuffers[(size_t) b].getWritePointer (ch);
+        float* out[halation::numBands];
+        for (int b = 0; b < halation::numBands; ++b) out[b] = bandBuffers[(size_t) b].getWritePointer (ch);
         auto& xo = crossover[(size_t) ch];
         for (int i = 0; i < upN; ++i)
         {
             xo.process (x[i], bands, dry[i]);
-            for (int b = 0; b < prism::numBands; ++b) out[b][i] = bands[(size_t) b];
+            for (int b = 0; b < halation::numBands; ++b) out[b][i] = bands[(size_t) b];
         }
         xo.snap();
     }
 
     // 3) Each band: compress, then excite
     const float osSmooth = 1.0f - (float) std::exp (-1.0 / (0.02 * osFs));
-    for (int b = 0; b < prism::numBands; ++b)
+    for (int b = 0; b < halation::numBands; ++b)
     {
         const auto& bp = p.bands[(size_t) b];
         auto& buf = bandBuffers[(size_t) b];
@@ -239,10 +239,10 @@ void PrismAudioProcessor::processChunk (float* const* io, int channels, int n, c
                 float level = 0.0f;
                 for (int ch = 0; ch < channels; ++ch) level = juce::jmax (level, std::abs (x[ch][i]));
                 env = level + (level > env ? exciteAttack : exciteRelease) * (env - level);
-                const float ref = juce::jmax ((float) env, prism::exciteFloor), mixAmount = prism::exciteMix (e);
+                const float ref = juce::jmax ((float) env, halation::exciteFloor), mixAmount = halation::exciteMix (e);
                 for (int ch = 0; ch < channels; ++ch)
                 {
-                    const float h = ref * prism::exciteHarmonics (x[ch][i] / ref);
+                    const float h = ref * halation::exciteHarmonics (x[ch][i] / ref);
                     x[ch][i] += mixAmount * ex.highPass[(size_t) ch].process (h);
                 }
             }
@@ -268,7 +268,7 @@ void PrismAudioProcessor::processChunk (float* const* io, int channels, int n, c
         for (int i = 0; i < upN; ++i)
         {
             float wet = 0.0f;
-            for (int b = 0; b < prism::numBands; ++b)
+            for (int b = 0; b < halation::numBands; ++b)
                 if (! anySolo || p.bands[(size_t) b].solo)
                     wet += bandBuffers[(size_t) b].getReadPointer (ch)[i];
             m += (p.mix - m) * osSmooth;
@@ -296,24 +296,24 @@ void PrismAudioProcessor::processChunk (float* const* io, int channels, int n, c
 }
 
 //==============================================================================
-int PrismAudioProcessor::getNumPrograms() { return (int) prism::factoryPresets().size(); }
+int HalationAudioProcessor::getNumPrograms() { return (int) halation::factoryPresets().size(); }
 
-const juce::String PrismAudioProcessor::getProgramName (int index)
+const juce::String HalationAudioProcessor::getProgramName (int index)
 {
-    const auto& list = prism::factoryPresets();
+    const auto& list = halation::factoryPresets();
     return juce::isPositiveAndBelow (index, (int) list.size()) ? juce::String (list[(size_t) index].name) : juce::String();
 }
 
-void PrismAudioProcessor::setCurrentProgram (int index)
+void HalationAudioProcessor::setCurrentProgram (int index)
 {
     // Hosts often set program 0 while loading a session: leave the restored settings alone then
     if (index == getCurrentProgram() || ! juce::isPositiveAndBelow (index, getNumPrograms())) return;
     applyFactoryPreset (index);
 }
 
-void PrismAudioProcessor::applyFactoryPreset (int index)
+void HalationAudioProcessor::applyFactoryPreset (int index)
 {
-    const auto& list = prism::factoryPresets();
+    const auto& list = halation::factoryPresets();
     if (! juce::isPositiveAndBelow (index, (int) list.size())) return;
     const auto& preset = list[(size_t) index];
     for (auto* param : getParameters())
@@ -326,29 +326,29 @@ void PrismAudioProcessor::applyFactoryPreset (int index)
     setPresetName (preset.name);
 }
 
-void PrismAudioProcessor::setPresetName (const juce::String& name)
+void HalationAudioProcessor::setPresetName (const juce::String& name)
 {
     const juce::SpinLock::ScopedLockType l (presetLock);
     presetName = name;
 }
 
-juce::File PrismAudioProcessor::userPresetFolder()
+juce::File HalationAudioProcessor::userPresetFolder()
 {
     auto base = juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory);
    #if JUCE_MAC
     base = base.getChildFile ("Application Support");
    #endif
-    return base.getChildFile ("LBAudio").getChildFile ("Prism").getChildFile ("Presets");
+    return base.getChildFile ("LBAudio").getChildFile ("Halation").getChildFile ("Presets");
 }
 
-juce::Array<juce::File> PrismAudioProcessor::userPresets() const
+juce::Array<juce::File> HalationAudioProcessor::userPresets() const
 {
-    auto files = userPresetFolder().findChildFiles (juce::File::findFiles, false, "*.prismpreset");
+    auto files = userPresetFolder().findChildFiles (juce::File::findFiles, false, "*.halationpreset");
     files.sort();
     return files;
 }
 
-bool PrismAudioProcessor::saveUserPreset (const juce::String& rawName)
+bool HalationAudioProcessor::saveUserPreset (const juce::String& rawName)
 {
     const auto name = juce::File::createLegalFileName (rawName.trim());
     if (name.isEmpty()) return false;
@@ -358,16 +358,16 @@ bool PrismAudioProcessor::saveUserPreset (const juce::String& rawName)
     setPresetName (name);
     auto state = apvts.copyState();
     state.setProperty ("presetName", name, nullptr);
-    juce::XmlElement root ("PrismPreset");
+    juce::XmlElement root ("HalationPreset");
     root.setAttribute ("name", name);
     if (auto xml = state.createXml()) root.addChildElement (xml.release());
-    return root.writeTo (folder.getChildFile (name + ".prismpreset"));
+    return root.writeTo (folder.getChildFile (name + ".halationpreset"));
 }
 
-bool PrismAudioProcessor::loadUserPreset (const juce::File& file)
+bool HalationAudioProcessor::loadUserPreset (const juce::File& file)
 {
     auto root = juce::XmlDocument::parse (file);
-    if (root == nullptr || ! root->hasTagName ("PrismPreset")) return false;
+    if (root == nullptr || ! root->hasTagName ("HalationPreset")) return false;
     auto* stateXml = root->getChildByName (apvts.state.getType());
     if (stateXml == nullptr) return false;
     restoreState (juce::ValueTree::fromXml (*stateXml));
@@ -376,7 +376,7 @@ bool PrismAudioProcessor::loadUserPreset (const juce::File& file)
     return true;
 }
 
-void PrismAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
+void HalationAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
     auto state = apvts.copyState();
     state.setProperty ("presetName", getPresetName(), nullptr);
@@ -385,7 +385,7 @@ void PrismAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
         copyXmlToBinary (*xml, destData);
 }
 
-void PrismAudioProcessor::setStateInformation (const void* data, int size)
+void HalationAudioProcessor::setStateInformation (const void* data, int size)
 {
     auto xml = getXmlFromBinary (data, size);
     if (xml == nullptr || ! xml->hasTagName (apvts.state.getType())) return;
@@ -395,7 +395,7 @@ void PrismAudioProcessor::setStateInformation (const void* data, int size)
     setPresetName (state.getProperty ("presetName", "Init").toString());
 }
 
-void PrismAudioProcessor::restoreState (const juce::ValueTree& state)
+void HalationAudioProcessor::restoreState (const juce::ValueTree& state)
 {
     apvts.replaceState (state);
     // The value tree skips a parameter whose stored value already reads the same (a switch sitting at 0.3 reads
@@ -411,6 +411,6 @@ void PrismAudioProcessor::restoreState (const juce::ValueTree& state)
         }
 }
 
-juce::AudioProcessorEditor* PrismAudioProcessor::createEditor() { return new PrismAudioProcessorEditor (*this); }
+juce::AudioProcessorEditor* HalationAudioProcessor::createEditor() { return new HalationAudioProcessorEditor (*this); }
 
-juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() { return new PrismAudioProcessor(); }
+juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() { return new HalationAudioProcessor(); }

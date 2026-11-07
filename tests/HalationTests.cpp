@@ -1,6 +1,6 @@
-// Prism tests: the crossover sums flat, Mix stays flat, each band is its own, the compressors' maths, the
+// Halation tests: the crossover sums flat, Mix stays flat, each band is its own, the compressors' maths, the
 // exciters' harmonics (made from their band only, and not aliased), solo, bypass, presets and state.
-//   PrismTests <Prism.vst3> [ui-snapshot.png]
+//   HalationTests <Halation.vst3> [ui-snapshot.png]
 
 #include "Harness.h"
 #include "PluginProcessor.h"
@@ -12,7 +12,7 @@ namespace
 {
 int expectedLatency()
 {
-    juce::dsp::Oversampling<float> os (2, (size_t) PrismAudioProcessor::oversamplingStages,
+    juce::dsp::Oversampling<float> os (2, (size_t) HalationAudioProcessor::oversamplingStages,
                                        juce::dsp::Oversampling<float>::filterHalfBandFIREquiripple, true, true);
     os.initProcessing (512);
     return juce::roundToInt (os.getLatencyInSamples());
@@ -227,11 +227,11 @@ void runSuite (juce::AudioProcessor& proc)
     }
 
     // --- Factory presets are the host's programs ---------------------------------------------------------------
-    const auto& presets = prism::factoryPresets();
+    const auto& presets = halation::factoryPresets();
     check (proc.getNumPrograms() == (int) presets.size(), "Factory presets listed as programs", juce::String (proc.getNumPrograms()) + " programs");
     check (proc.getProgramName (0) == "Init", "Program 0 is Init", proc.getProgramName (0));
     {
-        PrismAudioProcessor reference; // for each ID's name and range
+        HalationAudioProcessor reference; // for each ID's name and range
         int bad = 0;
         juce::String detail;
         for (int k = 1; k < (int) presets.size(); ++k)
@@ -290,38 +290,38 @@ void runSuite (juce::AudioProcessor& proc)
            "State save/restore", "'" + h.text ("Mid Split") + "', '" + h.text ("High Mid Excite") + "', '" + h.text ("Low Bypass") + "'");
 
     // --- User presets (built-in processor only: they're files on disk) ----------------------------------------
-    if (auto* prism = dynamic_cast<PrismAudioProcessor*> (&proc))
+    if (auto* halation = dynamic_cast<HalationAudioProcessor*> (&proc))
     {
-        const juce::String name = "PrismTests temporary preset";
+        const juce::String name = "HalationTests temporary preset";
         defaults (proc); h.set ("Low Split", "90"); h.set ("High Excite", "33"); h.apply();
-        const bool saved = prism->saveUserPreset (name);
-        const auto file = PrismAudioProcessor::userPresetFolder().getChildFile (name + ".prismpreset");
+        const bool saved = halation->saveUserPreset (name);
+        const auto file = HalationAudioProcessor::userPresetFolder().getChildFile (name + ".halationpreset");
         defaults (proc); h.apply();
-        const bool listed = prism->userPresets().contains (file);
-        const bool loaded = prism->loadUserPreset (file);
+        const bool listed = halation->userPresets().contains (file);
+        const bool loaded = halation->loadUserPreset (file);
         h.apply();
         check (saved && listed && loaded && h.text ("Low Split") == "90 Hz" && h.text ("High Excite") == "33 %"
-                   && prism->getPresetName() == name && prism->getPresetIndex() == -1,
-               "User preset: save, list and load", "'" + h.text ("Low Split") + "', '" + h.text ("High Excite") + "', '" + prism->getPresetName() + "'");
+                   && halation->getPresetName() == name && halation->getPresetIndex() == -1,
+               "User preset: save, list and load", "'" + h.text ("Low Split") + "', '" + h.text ("High Excite") + "', '" + halation->getPresetName() + "'");
         // A host setting program 0 while it loads a session mustn't wipe a preset of yours
         proc.setCurrentProgram (0);
         h.apply();
-        check (h.text ("High Excite") == "33 %" && prism->getPresetName() == name, "...and a host's program 0 leaves it alone", h.text ("High Excite"));
+        check (h.text ("High Excite") == "33 %" && halation->getPresetName() == name, "...and a host's program 0 leaves it alone", h.text ("High Excite"));
         file.deleteFile();
-        prism->applyFactoryPreset (0);
-        check (prism->getPresetName() == "Init" && h.text ("Low Split") == "120 Hz", "Init preset resets everything", prism->getPresetName());
+        halation->applyFactoryPreset (0);
+        check (halation->getPresetName() == "Init" && h.text ("Low Split") == "120 Hz", "Init preset resets everything", halation->getPresetName());
     }
 }
 } // namespace
 
 int main (int argc, char** argv)
 {
-    if (auto result = maybeUIVideo<PrismAudioProcessor, PrismAudioProcessorEditor> (argc, argv)) return *result;
+    if (auto result = maybeUIVideo<HalationAudioProcessor, HalationAudioProcessorEditor> (argc, argv)) return *result;
     return runMain (argc, argv, runSuite,
-        [] { return std::make_unique<PrismAudioProcessor>(); },
+        [] { return std::make_unique<HalationAudioProcessor>(); },
         [] (const juce::File& png)
         {
-            renderSnapshot<PrismAudioProcessor, PrismAudioProcessorEditor> (png, [] (Harness& h)
+            renderSnapshot<HalationAudioProcessor, HalationAudioProcessorEditor> (png, [] (Harness& h)
             {
                 h.proc.setCurrentProgram (1); // Mix glue
             }, beat (-7.0f), 90);

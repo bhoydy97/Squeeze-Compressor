@@ -1,5 +1,5 @@
-lbaudio_add_plugin(Prism
-    PLUGIN_CODE     Prm1
+lbaudio_add_plugin(Halation
+    PLUGIN_CODE     Hal1
     TYPE            "Multiband"
     VST3_CATEGORIES Fx Dynamics
     SOURCES         Source/PluginProcessor.cpp

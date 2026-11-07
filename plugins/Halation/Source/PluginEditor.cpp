@@ -2,7 +2,7 @@
 
 using namespace lbaudio::ui;
 
-lbaudio::ui::Theme prismTheme()
+lbaudio::ui::Theme halationTheme()
 {
     Theme t;
     t.background = juce::Colour (0xff0c0d12);
@@ -35,11 +35,11 @@ lbaudio::ui::Theme prismTheme()
     return t;
 }
 
-juce::Colour prismBandColour (int band)
+juce::Colour halationBandColour (int band)
 {
-    static const juce::Colour colours[prism::numBands] = {
+    static const juce::Colour colours[halation::numBands] = {
         juce::Colour (0xffff5a4e), juce::Colour (0xffffb547), juce::Colour (0xff3ee6a8), juce::Colour (0xff4cc9ff) };
-    return colours[juce::jlimit (0, prism::numBands - 1, band)];
+    return colours[juce::jlimit (0, halation::numBands - 1, band)];
 }
 
 namespace
@@ -66,8 +66,8 @@ juce::String rangeText (float lo, float hi)
 
 Theme bandTheme (int band)
 {
-    Theme t = prismTheme();
-    const auto c = prismBandColour (band);
+    Theme t = halationTheme();
+    const auto c = halationBandColour (band);
     t.accent = c; t.accent2 = c.brighter (0.3f); t.reduction = c; t.onAccent = juce::Colour (0xff0c0d12);
     return t;
 }
@@ -93,13 +93,13 @@ double BandSpectrum::xToHz (float x) const
 
 juce::RangedAudioParameter* BandSpectrum::splitParam (int i) const
 {
-    static const char* ids[3] = { prism::ids::split1, prism::ids::split2, prism::ids::split3 };
+    static const char* ids[3] = { halation::ids::split1, halation::ids::split2, halation::ids::split3 };
     return apvts.getParameter (ids[juce::jlimit (0, 2, i)]);
 }
 
 int BandSpectrum::handleAt (juce::Point<float> p) const
 {
-    const auto s = prism::orderedSplits (params.splits, fs);
+    const auto s = halation::orderedSplits (params.splits, fs);
     const float xs[3] = { hzToX (s.low), hzToX (s.mid), hzToX (s.high) };
     int best = -1; float bestD = 10.0f;
     for (int i = 0; i < 3; ++i)
@@ -112,7 +112,7 @@ void BandSpectrum::paint (juce::Graphics& g)
     const auto& t = themeOf (*this);
     paintPanel (g, getLocalBounds(), t);
     const auto plot = plotArea();
-    const auto s = prism::orderedSplits (params.splits, fs);
+    const auto s = halation::orderedSplits (params.splits, fs);
     const float edges[5] = { plot.getX(), hzToX (s.low), hzToX (s.mid), hzToX (s.high), plot.getRight() };
     auto dbToY = [&] (float db) { return juce::jmap (juce::jlimit (-90.0f, 0.0f, db), -90.0f, 0.0f, plot.getBottom(), plot.getY()); };
 
@@ -122,9 +122,9 @@ void BandSpectrum::paint (juce::Graphics& g)
     g.drawText ("DRAG THE SPLITS", juce::Rectangle<float> (plot.getRight() - 200.0f, 8.0f, 200.0f, 18.0f), juce::Justification::centredRight);
 
     // Band regions
-    for (int b = 0; b < prism::numBands; ++b)
+    for (int b = 0; b < halation::numBands; ++b)
     {
-        const auto col = prismBandColour (b);
+        const auto col = halationBandColour (b);
         const auto region = juce::Rectangle<float> (edges[b], plot.getY(), edges[b + 1] - edges[b], plot.getHeight());
         const bool off = params.bands[(size_t) b].bypass;
         g.setGradientFill (juce::ColourGradient (col.withAlpha (off ? 0.02f : 0.10f), 0.0f, region.getY(),
@@ -132,7 +132,7 @@ void BandSpectrum::paint (juce::Graphics& g)
         g.fillRect (region);
         g.setColour (col.withAlpha (off ? 0.35f : 0.9f));
         g.setFont (styledFont (10.5f, true, false, 0.12f));
-        g.drawText (juce::String (prism::bandName (b)).toUpperCase(), region.withTop (region.getBottom() - 18.0f).reduced (6.0f, 0.0f),
+        g.drawText (juce::String (halation::bandName (b)).toUpperCase(), region.withTop (region.getBottom() - 18.0f).reduced (6.0f, 0.0f),
                     juce::Justification::centredLeft, false);
     }
 
@@ -177,11 +177,11 @@ void BandSpectrum::paint (juce::Graphics& g)
     }
 
     // Gain reduction, hanging from the top of each band
-    for (int b = 0; b < prism::numBands; ++b)
+    for (int b = 0; b < halation::numBands; ++b)
     {
         const float gr = reduction[(size_t) b];
         if (gr < 0.05f || params.bands[(size_t) b].bypass) continue;
-        const auto col = prismBandColour (b);
+        const auto col = halationBandColour (b);
         const float h = plot.getHeight() * 0.45f * juce::jlimit (0.0f, 1.0f, gr / 24.0f);
         const auto bar = juce::Rectangle<float> (edges[b] + 3.0f, plot.getY(), edges[b + 1] - edges[b] - 6.0f, h);
         g.setGradientFill (juce::ColourGradient (col.withAlpha (0.55f), 0.0f, bar.getY(), col.withAlpha (0.15f), 0.0f, bar.getBottom(), false));
@@ -204,7 +204,7 @@ void BandSpectrum::paint (juce::Graphics& g)
         g.setColour (t.text.withAlpha (hot ? 0.9f : 0.45f));
         g.fillPath (dashed);
         const auto knob = juce::Rectangle<float> (hot ? 14.0f : 11.0f, hot ? 14.0f : 11.0f).withCentre ({ x, plot.getY() + 1.0f });
-        g.setGradientFill (juce::ColourGradient (prismBandColour (i), knob.getX(), 0.0f, prismBandColour (i + 1), knob.getRight(), 0.0f, false));
+        g.setGradientFill (juce::ColourGradient (halationBandColour (i), knob.getX(), 0.0f, halationBandColour (i + 1), knob.getRight(), 0.0f, false));
         g.fillEllipse (knob);
         g.setColour (t.text);
         g.drawEllipse (knob, 1.2f);
@@ -257,14 +257,14 @@ void BandSpectrum::mouseDoubleClick (const juce::MouseEvent& e)
 //==============================================================================
 BandStrip::BandStrip (juce::AudioProcessorValueTreeState& state, int bandIndex)
     : band (bandIndex), lnf (bandTheme (bandIndex)),
-      solo (state, prism::ids::band (bandIndex, "solo"), "SOLO"),
-      bypass (state, prism::ids::band (bandIndex, "bypass"), "BYPASS"),
-      threshold (state, prism::ids::band (bandIndex, "threshold"), "THRESHOLD"),
-      ratio (state, prism::ids::band (bandIndex, "ratio"), "RATIO"),
-      makeup (state, prism::ids::band (bandIndex, "makeup"), "MAKEUP", true),
-      attack (state, prism::ids::band (bandIndex, "attack"), "ATTACK"),
-      release (state, prism::ids::band (bandIndex, "release"), "RELEASE"),
-      excite (state, prism::ids::band (bandIndex, "excite"), "EXCITE")
+      solo (state, halation::ids::band (bandIndex, "solo"), "SOLO"),
+      bypass (state, halation::ids::band (bandIndex, "bypass"), "BYPASS"),
+      threshold (state, halation::ids::band (bandIndex, "threshold"), "THRESHOLD"),
+      ratio (state, halation::ids::band (bandIndex, "ratio"), "RATIO"),
+      makeup (state, halation::ids::band (bandIndex, "makeup"), "MAKEUP", true),
+      attack (state, halation::ids::band (bandIndex, "attack"), "ATTACK"),
+      release (state, halation::ids::band (bandIndex, "release"), "RELEASE"),
+      excite (state, halation::ids::band (bandIndex, "excite"), "EXCITE")
 {
     setLookAndFeel (&lnf);
     for (juce::Component* c : { (juce::Component*) &solo, (juce::Component*) &bypass, (juce::Component*) &threshold,
@@ -282,11 +282,11 @@ void BandStrip::paint (juce::Graphics& g)
 {
     const auto& t = lnf.theme;
     paintPanel (g, getLocalBounds(), t);
-    const auto col = prismBandColour (band);
+    const auto col = halationBandColour (band);
     g.setColour (col);
     g.fillRoundedRectangle (getLocalBounds().toFloat().removeFromTop (3.0f).reduced (14.0f, 0.0f), 1.5f);
     g.setFont (styledFont (13.0f, true, false, 0.12f));
-    g.drawText (juce::String (prism::bandName (band)).toUpperCase(), titleArea, juce::Justification::centredLeft);
+    g.drawText (juce::String (halation::bandName (band)).toUpperCase(), titleArea, juce::Justification::centredLeft);
     g.setColour (t.dim);
     g.setFont (font (11.5f));
     g.drawText (rangeText (lo, hi), titleArea, juce::Justification::centredRight);
@@ -315,7 +315,7 @@ void BandStrip::resized()
 }
 
 //==============================================================================
-PresetBar::PresetBar (PrismAudioProcessor& p) : processor (p)
+PresetBar::PresetBar (HalationAudioProcessor& p) : processor (p)
 {
     for (auto* b : { &prev, &next, &name, &saveButton }) addAndMakeVisible (b);
     prev.setTooltip ("Previous preset");
@@ -349,7 +349,7 @@ void PresetBar::resized()
 void PresetBar::showMenu()
 {
     juce::PopupMenu menu;
-    const auto& list = prism::factoryPresets();
+    const auto& list = halation::factoryPresets();
     juce::String category;
     for (int i = 0; i < (int) list.size(); ++i)
     {
@@ -372,7 +372,7 @@ void PresetBar::showMenu()
         else if (r >= 1000 && r - 1000 < user.size()) processor.loadUserPreset (user[r - 1000]);
         else if (r == 999)
         {
-            auto folder = PrismAudioProcessor::userPresetFolder();
+            auto folder = HalationAudioProcessor::userPresetFolder();
             folder.createDirectory();
             folder.revealToUser();
         }
@@ -382,7 +382,7 @@ void PresetBar::showMenu()
 
 void PresetBar::step (int delta)
 {
-    const int factory = (int) prism::factoryPresets().size();
+    const int factory = (int) halation::factoryPresets().size();
     const auto user = processor.userPresets();
     const int total = factory + user.size();
     int current = processor.getPresetIndex();
@@ -400,7 +400,7 @@ void PresetBar::step (int delta)
 
 void PresetBar::save()
 {
-    auto* w = new juce::AlertWindow ("Save preset", "Name your preset. It's saved with your other Prism presets.", juce::MessageBoxIconType::NoIcon, this);
+    auto* w = new juce::AlertWindow ("Save preset", "Name your preset. It's saved with your other Halation presets.", juce::MessageBoxIconType::NoIcon, this);
     w->addTextEditor ("name", processor.getPresetName());
     w->addButton ("Save", 1, juce::KeyPress (juce::KeyPress::returnKey));
     w->addButton ("Cancel", 0, juce::KeyPress (juce::KeyPress::escapeKey));
@@ -416,11 +416,11 @@ void PresetBar::save()
 }
 
 //==============================================================================
-PrismAudioProcessorEditor::PrismAudioProcessorEditor (PrismAudioProcessor& p)
+HalationAudioProcessorEditor::HalationAudioProcessorEditor (HalationAudioProcessor& p)
     : AudioProcessorEditor (&p), processorRef (p)
 {
     setLookAndFeel (&lnf);
-    for (int b = 0; b < prism::numBands; ++b)
+    for (int b = 0; b < halation::numBands; ++b)
     {
         strips[(size_t) b] = std::make_unique<BandStrip> (processorRef.apvts, b);
         addAndMakeVisible (*strips[(size_t) b]);
@@ -434,13 +434,13 @@ PrismAudioProcessorEditor::PrismAudioProcessorEditor (PrismAudioProcessor& p)
     startTimerHz (30);
 }
 
-PrismAudioProcessorEditor::~PrismAudioProcessorEditor()
+HalationAudioProcessorEditor::~HalationAudioProcessorEditor()
 {
     stopTimer();
     setLookAndFeel (nullptr);
 }
 
-void PrismAudioProcessorEditor::refreshFromProcessor()
+void HalationAudioProcessorEditor::refreshFromProcessor()
 {
     auto analyse = [this] (const lbaudio::ScopeBuffer& scope, std::vector<float>& dest)
     {
@@ -460,10 +460,10 @@ void PrismAudioProcessorEditor::refreshFromProcessor()
 
     const auto params = processorRef.currentParams();
     const double sr = processorRef.getSampleRateForDisplay();
-    const auto s = prism::orderedSplits (params.splits, sr);
+    const auto s = halation::orderedSplits (params.splits, sr);
     const float edges[5] = { 20.0f, s.low, s.mid, s.high, 20000.0f };
-    std::array<float, prism::numBands> red {};
-    for (int b = 0; b < prism::numBands; ++b)
+    std::array<float, halation::numBands> red {};
+    for (int b = 0; b < halation::numBands; ++b)
     {
         auto& strip = *strips[(size_t) b];
         strip.grMeter.push (processorRef.meterReduction[(size_t) b].exchange (0.0f));
@@ -476,23 +476,23 @@ void PrismAudioProcessorEditor::refreshFromProcessor()
     presets.refresh();
 }
 
-void PrismAudioProcessorEditor::paint (juce::Graphics& g)
+void HalationAudioProcessorEditor::paint (juce::Graphics& g)
 {
     const auto& t = lnf.theme;
     g.fillAll (t.background);
     // A faint spectrum along the top edge
-    for (int b = 0; b < prism::numBands; ++b)
+    for (int b = 0; b < halation::numBands; ++b)
     {
-        const float w = (float) getWidth() / prism::numBands;
-        g.setGradientFill (juce::ColourGradient (prismBandColour (b), w * (float) b, 0.0f,
-                                                 prismBandColour (juce::jmin (b + 1, prism::numBands - 1)), w * (float) (b + 1), 0.0f, false));
+        const float w = (float) getWidth() / halation::numBands;
+        g.setGradientFill (juce::ColourGradient (halationBandColour (b), w * (float) b, 0.0f,
+                                                 halationBandColour (juce::jmin (b + 1, halation::numBands - 1)), w * (float) (b + 1), 0.0f, false));
         g.fillRect (w * (float) b, 0.0f, w, 3.0f);
     }
-    paintHeader (g, getWidth(), "Prism", LBAUDIO_PLUGIN_TYPE, t);
+    paintHeader (g, getWidth(), "Halation", LBAUDIO_PLUGIN_TYPE, t);
     paintPanel (g, globalPanel, t);
 }
 
-void PrismAudioProcessorEditor::resized()
+void HalationAudioProcessorEditor::resized()
 {
     presets.setBounds (getWidth() - 20 - 380, 13, 380, 30);
     auto area = getLocalBounds();
@@ -503,8 +503,8 @@ void PrismAudioProcessorEditor::resized()
 
     globalPanel = area.removeFromRight (176);
     area.removeFromRight (12);
-    const int gap = 12, w = (area.getWidth() - gap * (prism::numBands - 1)) / prism::numBands;
-    for (int b = 0; b < prism::numBands; ++b)
+    const int gap = 12, w = (area.getWidth() - gap * (halation::numBands - 1)) / halation::numBands;
+    for (int b = 0; b < halation::numBands; ++b)
     {
         strips[(size_t) b]->setBounds (area.removeFromLeft (w));
         area.removeFromLeft (gap);

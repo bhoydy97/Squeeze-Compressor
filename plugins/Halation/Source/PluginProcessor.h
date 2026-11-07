@@ -3,10 +3,10 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_dsp/juce_dsp.h>
 #include <LBAudio/Scope.h>
-#include "PrismDSP.h"
-#include "PrismPresets.h"
+#include "HalationDSP.h"
+#include "HalationPresets.h"
 
-namespace prism::ids
+namespace halation::ids
 {
 inline constexpr const char* split1 = "split1";
 inline constexpr const char* split2 = "split2";
@@ -20,11 +20,11 @@ inline juce::String band (int b, const char* what) { return "b" + juce::String (
 inline const char* const bandControls[] = { "threshold", "ratio", "attack", "release", "makeup", "excite", "solo", "bypass" };
 }
 
-class PrismAudioProcessor final : public juce::AudioProcessor
+class HalationAudioProcessor final : public juce::AudioProcessor
 {
 public:
-    PrismAudioProcessor();
-    ~PrismAudioProcessor() override = default;
+    HalationAudioProcessor();
+    ~HalationAudioProcessor() override = default;
 
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
     void releaseResources() override {}
@@ -55,7 +55,7 @@ public:
     void setStateInformation (const void* data, int sizeInBytes) override;
 
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
-    prism::Params currentParams() const;
+    halation::Params currentParams() const;
     double getSampleRateForDisplay() const { return fs; }
 
     // ---- Presets ---------------------------------------------------------------------------------------
@@ -68,7 +68,7 @@ public:
 
     juce::AudioProcessorValueTreeState apvts;
     lbaudio::ScopeBuffer scopeIn, scopeOut;                     // for the spectrum
-    std::array<std::atomic<float>, prism::numBands> meterReduction {}; // dB, most since last read
+    std::array<std::atomic<float>, halation::numBands> meterReduction {}; // dB, most since last read
     std::atomic<float> meterInputPeak { 0.0f }, meterOutputPeak { 0.0f };
 
     static constexpr int oversamplingStages = 2; // 4x, so the exciters' harmonics don't alias
@@ -76,7 +76,7 @@ public:
 private:
     void setPresetName (const juce::String& name);
     void restoreState (const juce::ValueTree& state);
-    void processChunk (float* const* io, int numChannels, int numSamples, const prism::Params& p);
+    void processChunk (float* const* io, int numChannels, int numSamples, const halation::Params& p);
 
     std::unique_ptr<juce::dsp::Oversampling<float>> oversampler;
     double fs = 44100.0, osFs = 176400.0;
@@ -88,21 +88,21 @@ private:
     juce::String presetName { "Init" };
     juce::SpinLock presetLock;
 
-    std::array<prism::Crossover, 2> crossover;
-    prism::Splits currentSplits { -1.0f, -1.0f, -1.0f };
-    std::array<squeeze::Compressor, prism::numBands> compressors;
-    std::array<juce::AudioBuffer<float>, prism::numBands> bandBuffers;
+    std::array<halation::Crossover, 2> crossover;
+    halation::Splits currentSplits { -1.0f, -1.0f, -1.0f };
+    std::array<squeeze::Compressor, halation::numBands> compressors;
+    std::array<juce::AudioBuffer<float>, halation::numBands> bandBuffers;
     juce::AudioBuffer<float> dryBuffer;
-    std::array<prism::Exciter, prism::numBands> exciters;
+    std::array<halation::Exciter, halation::numBands> exciters;
     double exciteAttack = 0.0, exciteRelease = 0.0;
 
     // Smoothed values
     float inGain = 1.0f, outGain = 1.0f, mix = 1.0f, smoothCoeff = 0.001f;
-    std::array<float, prism::numBands> excite {};
+    std::array<float, halation::numBands> excite {};
 
     std::atomic<float>* pSplit[3] {};
     std::atomic<float>* pInput = nullptr; std::atomic<float>* pOutput = nullptr; std::atomic<float>* pMix = nullptr;
-    std::array<std::array<std::atomic<float>*, 8>, prism::numBands> pBand {};
+    std::array<std::array<std::atomic<float>*, 8>, halation::numBands> pBand {};
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PrismAudioProcessor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (HalationAudioProcessor)
 };
