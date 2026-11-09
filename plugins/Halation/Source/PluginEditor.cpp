@@ -4,41 +4,51 @@ using namespace lbaudio::ui;
 
 lbaudio::ui::Theme halationTheme()
 {
+    // Halation is the glow that bleeds around a bright light on film: a white-hot core with a red-orange halo.
+    // So: a warm black faceplate, smoked-glass panels, and everything that's lit glows.
     Theme t;
-    t.background = juce::Colour (0xff0c0d12);
-    t.panel      = juce::Colour (0xff15171f);
-    t.panelEdge  = juce::Colour (0xff2a2e3b);
-    t.track      = juce::Colour (0xff262a36);
-    t.text       = juce::Colour (0xffeef0f6);
-    t.dim        = juce::Colour (0xff8a90a3);
-    t.accent     = juce::Colour (0xffeef0f6);
-    t.accent2    = juce::Colour (0xffffb547);
-    t.onAccent   = juce::Colour (0xff0c0d12);
-    t.knobTop    = juce::Colour (0xff2c303c);
-    t.knobBottom = juce::Colour (0xff171920);
-    t.knobEdge   = juce::Colour (0xff3a3f4d);
-    t.pointer    = juce::Colour (0xffeef0f6);
-    t.meterBack  = juce::Colour (0xff0a0b0f);
-    t.meterLow   = juce::Colour (0xff3ee6a8);
-    t.meterMid   = juce::Colour (0xffffb547);
-    t.meterHigh  = juce::Colour (0xffff5a4e);
-    t.reduction  = juce::Colour (0xffffb547);
-    t.headerText = juce::Colour (0xffeef0f6);
-    t.headerType = juce::Colour (0xffffb547);
-    t.headerBrand = juce::Colour (0xff8a90a3);
-    t.headerLine = juce::Colour (0xff2a2e3b);
+    t.background = juce::Colour (0xff0a0708);
+    t.panel      = juce::Colour (0xdc161011); // slightly see-through, so the light behind shows through the glass
+    t.panelEdge  = juce::Colour (0xff302325);
+    t.track      = juce::Colour (0xff2c2124);
+    t.text       = juce::Colour (0xfffff3ea);
+    t.dim        = juce::Colour (0xffab958f);
+    t.accent     = juce::Colour (0xffffe4cf); // white-hot
+    t.accent2    = halationRed();
+    t.onAccent   = juce::Colour (0xff0a0708);
+    t.knobTop    = juce::Colour (0xff302427);
+    t.knobBottom = juce::Colour (0xff140f11);
+    t.knobEdge   = juce::Colour (0xff403034);
+    t.pointer    = juce::Colour (0xfffff3ea);
+    t.meterBack  = juce::Colour (0xff070405);
+    t.meterLow   = juce::Colour (0xffffbf52);
+    t.meterMid   = juce::Colour (0xffff7d36);
+    t.meterHigh  = juce::Colour (0xffff3b2f);
+    t.reduction  = juce::Colour (0xffff7d36);
+    t.headerText = juce::Colour (0xfffff1e6);
+    t.headerType = juce::Colour (0xffff8f52);
+    t.headerBrand = juce::Colour (0xffab958f);
+    t.headerLine = juce::Colour (0xff2a1f21);
     t.knob = KnobStyle::Halo;
-    t.corner = 10.0f;
-    t.titleSize = 25.0f;
-    t.titleKerning = 0.30f;
-    t.typeKerning = 0.12f;
+    t.panelStyle = PanelStyle::Glass;
+    t.corner = 12.0f;
+    t.titleSize = 26.0f;
+    t.titleKerning = 0.32f;
+    t.typeKerning = 0.14f;
+    t.glow = 1.0f;
+    t.glowTint = halationRed();
+    t.titleGlow = halationRed();
     return t;
 }
 
+juce::Colour halationRed() { return juce::Colour (0xffff3d24); }
+
+// Each band is its own colour of light, in the order of the spectrum: red light has the lowest frequency and violet
+// the highest, so the lows are red, then amber, green, and the highs violet. Far enough apart to never be mistaken.
 juce::Colour halationBandColour (int band)
 {
     static const juce::Colour colours[halation::numBands] = {
-        juce::Colour (0xffff5a4e), juce::Colour (0xffffb547), juce::Colour (0xff3ee6a8), juce::Colour (0xff4cc9ff) };
+        juce::Colour (0xffff4038), juce::Colour (0xffffb833), juce::Colour (0xff4cf08c), juce::Colour (0xffa688ff) };
     return colours[juce::jlimit (0, halation::numBands - 1, band)];
 }
 
@@ -68,7 +78,8 @@ Theme bandTheme (int band)
 {
     Theme t = halationTheme();
     const auto c = halationBandColour (band);
-    t.accent = c; t.accent2 = c.brighter (0.3f); t.reduction = c; t.onAccent = juce::Colour (0xff0c0d12);
+    t.accent = c; t.accent2 = c.brighter (0.3f); t.reduction = c; t.onAccent = juce::Colour (0xff0a0708);
+    t.glowTint = c;
     return t;
 }
 } // namespace
@@ -115,25 +126,26 @@ void BandSpectrum::paint (juce::Graphics& g)
     const auto s = halation::orderedSplits (params.splits, fs);
     const float edges[5] = { plot.getX(), hzToX (s.low), hzToX (s.mid), hzToX (s.high), plot.getRight() };
     auto dbToY = [&] (float db) { return juce::jmap (juce::jlimit (-90.0f, 0.0f, db), -90.0f, 0.0f, plot.getBottom(), plot.getY()); };
+    auto bandRegion = [&] (int b) { return juce::Rectangle<float> (edges[b], plot.getY(), edges[b + 1] - edges[b], plot.getHeight()); };
+
+    // The plot is a dark well, so the light in it reads
+    g.setColour (t.background.withAlpha (0.6f));
+    g.fillRect (plot);
 
     g.setColour (t.dim);
     g.setFont (styledFont (10.5f, true, false, 0.14f));
     g.drawText ("SPECTRUM", juce::Rectangle<float> (plot.getX(), 8.0f, 200.0f, 18.0f), juce::Justification::centredLeft);
     g.drawText ("DRAG THE SPLITS", juce::Rectangle<float> (plot.getRight() - 200.0f, 8.0f, 200.0f, 18.0f), juce::Justification::centredRight);
 
-    // Band regions
+    // Band regions, each lit from above in its own colour
     for (int b = 0; b < halation::numBands; ++b)
     {
         const auto col = halationBandColour (b);
-        const auto region = juce::Rectangle<float> (edges[b], plot.getY(), edges[b + 1] - edges[b], plot.getHeight());
+        const auto region = bandRegion (b);
         const bool off = params.bands[(size_t) b].bypass;
-        g.setGradientFill (juce::ColourGradient (col.withAlpha (off ? 0.02f : 0.10f), 0.0f, region.getY(),
-                                                 col.withAlpha (0.0f), 0.0f, region.getBottom(), false));
+        g.setGradientFill (juce::ColourGradient (col.withAlpha (off ? 0.025f : 0.13f), 0.0f, region.getY(),
+                                                 col.withAlpha (0.0f), 0.0f, region.getY() + region.getHeight() * 0.8f, false));
         g.fillRect (region);
-        g.setColour (col.withAlpha (off ? 0.35f : 0.9f));
-        g.setFont (styledFont (10.5f, true, false, 0.12f));
-        g.drawText (juce::String (halation::bandName (b)).toUpperCase(), region.withTop (region.getBottom() - 18.0f).reduced (6.0f, 0.0f),
-                    juce::Justification::centredLeft, false);
     }
 
     // Grid
@@ -141,42 +153,83 @@ void BandSpectrum::paint (juce::Graphics& g)
     for (double hz : { 50.0, 100.0, 200.0, 500.0, 1000.0, 2000.0, 5000.0, 10000.0 })
     {
         const float x = hzToX (hz);
-        g.setColour (t.panelEdge.withAlpha (0.55f));
+        g.setColour (t.panelEdge.withAlpha (0.5f));
         g.drawVerticalLine ((int) x, plot.getY(), plot.getBottom());
         g.setColour (t.dim);
         g.drawText (hz >= 1000.0 ? juce::String ((int) (hz / 1000.0)) + "k" : juce::String ((int) hz),
                     juce::Rectangle<float> (40.0f, 14.0f).withCentre ({ x, plot.getBottom() + 9.0f }), juce::Justification::centred);
     }
+    g.setColour (t.panelEdge);
+    g.drawHorizontalLine ((int) plot.getBottom(), plot.getX(), plot.getRight());
 
-    // Spectra: input faintly, output brighter
-    auto curve = [&] (const std::vector<float>& bins)
+    // Spectra: the input as a faint trace, the output as light. Under the output each band glows in its own colour;
+    // the trace itself is a white-hot filament with its halo in the band's colour.
+    // A trace of a spectrum: 'shown' leaves out stretches lying on the floor (silence), 'whole' runs edge to edge
+    struct Trace { juce::Path shown, whole; };
+    auto trace = [&] (const std::vector<float>& bins)
     {
-        juce::Path p;
-        p.startNewSubPath (plot.getX(), plot.getBottom());
+        Trace tr;
+        bool inShown = false;
         for (float x = plot.getX(); x <= plot.getRight(); x += 2.0f)
         {
             const double hz = xToHz (x);
             const double bin = hz / fs * size;
             const int k = juce::jlimit (1, (int) bins.size() - 2, (int) bin);
             const float frac = (float) juce::jlimit (0.0, 1.0, bin - k);
-            p.lineTo (x, dbToY (bins[(size_t) k] + frac * (bins[(size_t) k + 1] - bins[(size_t) k])));
+            const float db = bins[(size_t) k] + frac * (bins[(size_t) k + 1] - bins[(size_t) k]);
+            const float y = dbToY (db);
+            if (x == plot.getX()) tr.whole.startNewSubPath (x, y); else tr.whole.lineTo (x, y);
+            if (db > -89.0f)
+            {
+                if (inShown) tr.shown.lineTo (x, y); else tr.shown.startNewSubPath (x, y);
+                inShown = true;
+            }
+            else inShown = false;
         }
-        p.lineTo (plot.getRight(), plot.getBottom());
-        p.closeSubPath();
-        return p;
+        return tr;
     };
     if (size > 0 && ! spectrumOut.empty())
     {
-        const auto in = curve (spectrumIn), out = curve (spectrumOut);
-        g.setColour (t.text.withAlpha (0.18f));
+        const auto inTrace = trace (spectrumIn), outTrace = trace (spectrumOut);
+        const auto& in = inTrace.shown;
+        const auto& out = outTrace.shown;
+        g.setColour (t.text.withAlpha (0.16f));
         g.strokePath (in, juce::PathStrokeType (1.0f));
-        g.setColour (t.text.withAlpha (0.07f));
-        g.fillPath (out);
-        g.setColour (t.text.withAlpha (0.75f));
-        g.strokePath (out, juce::PathStrokeType (1.3f));
+
+        auto area = outTrace.whole;
+        area.lineTo (plot.getRight(), plot.getBottom());
+        area.lineTo (plot.getX(), plot.getBottom());
+        area.closeSubPath();
+        juce::Path lit;
+        juce::PathStrokeType (1.6f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded).createStrokedPath (lit, out);
+
+        for (int b = 0; b < halation::numBands; ++b)
+        {
+            const auto col = halationBandColour (b);
+            const bool off = params.bands[(size_t) b].bypass;
+            juce::Graphics::ScopedSaveState save (g);
+            g.reduceClipRegion (bandRegion (b).withY (0.0f).withHeight ((float) getHeight()).toNearestInt());
+            g.setGradientFill (juce::ColourGradient (col.withAlpha (off ? 0.06f : 0.22f), 0.0f, plot.getY() + plot.getHeight() * 0.25f,
+                                                     col.withAlpha (0.02f), 0.0f, plot.getBottom(), false));
+            g.fillPath (area);
+            paintGlow (g, lit, col.withAlpha (off ? 0.3f : 1.0f), 9);
+            paintGlow (g, lit, col.withAlpha (off ? 0.3f : 0.9f), 3);
+        }
+        g.setColour (t.text.withAlpha (0.92f));
+        g.strokePath (out, juce::PathStrokeType (1.3f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
     }
 
-    // Gain reduction, hanging from the top of each band
+    // Band names along the bottom of each band
+    for (int b = 0; b < halation::numBands; ++b)
+    {
+        const auto region = bandRegion (b);
+        g.setColour (halationBandColour (b).withAlpha (params.bands[(size_t) b].bypass ? 0.35f : 0.95f));
+        g.setFont (styledFont (10.5f, true, false, 0.12f));
+        g.drawText (juce::String (halation::bandName (b)).toUpperCase(), region.withTop (region.getBottom() - 18.0f).reduced (6.0f, 0.0f),
+                    juce::Justification::centredLeft, false);
+    }
+
+    // Gain reduction, hanging from the top of each band like light spilling down
     for (int b = 0; b < halation::numBands; ++b)
     {
         const float gr = reduction[(size_t) b];
@@ -184,30 +237,38 @@ void BandSpectrum::paint (juce::Graphics& g)
         const auto col = halationBandColour (b);
         const float h = plot.getHeight() * 0.45f * juce::jlimit (0.0f, 1.0f, gr / 24.0f);
         const auto bar = juce::Rectangle<float> (edges[b] + 3.0f, plot.getY(), edges[b + 1] - edges[b] - 6.0f, h);
-        g.setGradientFill (juce::ColourGradient (col.withAlpha (0.55f), 0.0f, bar.getY(), col.withAlpha (0.15f), 0.0f, bar.getBottom(), false));
+        g.setGradientFill (juce::ColourGradient (col.withAlpha (0.5f), 0.0f, bar.getY(), col.withAlpha (0.08f), 0.0f, bar.getBottom(), false));
         g.fillRect (bar);
+        juce::Path edge; edge.addRectangle (bar.withTop (bar.getBottom() - 2.0f));
+        paintGlow (g, edge, col, 6);
+        g.setColour (col.interpolatedWith (juce::Colours::white, 0.45f));
+        g.fillPath (edge);
         g.setColour (col);
-        g.fillRect (bar.withTop (bar.getBottom() - 2.0f));
         g.setFont (font (11.0f, true));
-        g.drawText ("-" + juce::String (gr, 1), bar.withHeight (16.0f).withY (bar.getBottom() + 2.0f), juce::Justification::centred, false);
+        g.drawText ("-" + juce::String (gr, 1), bar.withHeight (16.0f).withY (bar.getBottom() + 3.0f), juce::Justification::centred, false);
     }
 
-    // Split handles
+    // Split handles: points of light where two bands meet
     const float splitHz[3] = { s.low, s.mid, s.high };
     for (int i = 0; i < 3; ++i)
     {
         const float x = edges[i + 1];
         const bool hot = i == dragging || i == hover;
+        const auto blend = halationBandColour (i).interpolatedWith (halationBandColour (i + 1), 0.5f);
         juce::Path line; line.startNewSubPath (x, plot.getY()); line.lineTo (x, plot.getBottom());
         juce::Path dashed; const float dashes[] = { 4.0f, 4.0f };
         juce::PathStrokeType (hot ? 1.6f : 1.0f).createDashedStroke (dashed, line, dashes, 2);
-        g.setColour (t.text.withAlpha (hot ? 0.9f : 0.45f));
+        g.setColour (t.text.withAlpha (hot ? 0.85f : 0.4f));
         g.fillPath (dashed);
         const auto knob = juce::Rectangle<float> (hot ? 14.0f : 11.0f, hot ? 14.0f : 11.0f).withCentre ({ x, plot.getY() + 1.0f });
+        juce::Path dot; dot.addEllipse (knob);
+        paintGlow (g, dot, blend, hot ? 12 : 9);
+        paintGlow (g, dot, blend.interpolatedWith (juce::Colours::white, 0.3f), 4);
         g.setGradientFill (juce::ColourGradient (halationBandColour (i), knob.getX(), 0.0f, halationBandColour (i + 1), knob.getRight(), 0.0f, false));
         g.fillEllipse (knob);
+        g.setColour (juce::Colours::white.withAlpha (0.9f));
+        g.fillEllipse (knob.reduced (knob.getWidth() * 0.32f));
         g.setColour (t.text);
-        g.drawEllipse (knob, 1.2f);
         g.setFont (font (11.0f, true));
         g.drawText (hzText (splitHz[i]),
                     juce::Rectangle<float> (70.0f, 14.0f).withCentre ({ x, plot.getY() - 9.0f }), juce::Justification::centred, false);
@@ -278,13 +339,37 @@ BandStrip::BandStrip (juce::AudioProcessorValueTreeState& state, int bandIndex)
 
 BandStrip::~BandStrip() { setLookAndFeel (nullptr); }
 
+void BandStrip::setBypassed (bool shouldBeDimmed)
+{
+    if (shouldBeDimmed == dimmed) return;
+    dimmed = shouldBeDimmed;
+    for (juce::Component* c : { (juce::Component*) &threshold, (juce::Component*) &ratio, (juce::Component*) &makeup,
+                                (juce::Component*) &attack, (juce::Component*) &release, (juce::Component*) &excite,
+                                (juce::Component*) &grMeter, (juce::Component*) &solo })
+        c->setAlpha (dimmed ? 0.42f : 1.0f);
+    repaint();
+}
+
 void BandStrip::paint (juce::Graphics& g)
 {
     const auto& t = lnf.theme;
     paintPanel (g, getLocalBounds(), t);
-    const auto col = halationBandColour (band);
+    const auto col = halationBandColour (band).withMultipliedAlpha (dimmed ? 0.4f : 1.0f);
+    // A strip of the band's light along the top, glowing down onto the glass
+    const auto lightBar = getLocalBounds().toFloat().removeFromTop (3.0f).reduced (14.0f, 0.0f);
+    juce::Path bar; bar.addRoundedRectangle (lightBar, 1.5f);
+    paintGlow (g, bar, col, 12);
+    paintGlow (g, bar, col.interpolatedWith (juce::Colours::white, 0.3f), 3);
     g.setColour (col);
-    g.fillRoundedRectangle (getLocalBounds().toFloat().removeFromTop (3.0f).reduced (14.0f, 0.0f), 1.5f);
+    g.fillPath (bar);
+    // ...brightest in the middle, like a filament
+    const auto core = col.interpolatedWith (juce::Colours::white, 0.7f);
+    juce::ColourGradient hotLine (core.withAlpha (0.0f), lightBar.getX(), 0.0f, core.withAlpha (0.0f), lightBar.getRight(), 0.0f, false);
+    hotLine.addColour (0.5, core);
+    g.setGradientFill (hotLine);
+    g.fillRect (lightBar.withHeight (1.0f).withY (lightBar.getY() + 1.0f));
+
+    g.setColour (col.withAlpha (dimmed ? 0.55f : 1.0f));
     g.setFont (styledFont (13.0f, true, false, 0.12f));
     g.drawText (juce::String (halation::bandName (band)).toUpperCase(), titleArea, juce::Justification::centredLeft);
     g.setColour (t.dim);
@@ -429,6 +514,19 @@ HalationAudioProcessorEditor::HalationAudioProcessorEditor (HalationAudioProcess
                                 (juce::Component*) &output, (juce::Component*) &mix, (juce::Component*) &inMeter, (juce::Component*) &outMeter })
         addAndMakeVisible (c);
 
+    {
+        // A small tile of fine, faint grain: light and dark specks at random
+        grain = juce::Image (juce::Image::ARGB, 160, 160, true);
+        juce::Random rng (2049);
+        juce::Image::BitmapData px (grain, juce::Image::BitmapData::writeOnly);
+        for (int y = 0; y < grain.getHeight(); ++y)
+            for (int x = 0; x < grain.getWidth(); ++x)
+            {
+                const float n = rng.nextFloat();
+                if (n < 0.28f) px.setPixelColour (x, y, juce::Colours::black.withAlpha (0.10f * rng.nextFloat()));
+                else if (n > 0.80f) px.setPixelColour (x, y, juce::Colour (0xffffd8c4).withAlpha (0.035f * rng.nextFloat()));
+            }
+    }
     setSize (defaultWidth, defaultHeight);
     refreshFromProcessor();
     startTimerHz (30);
@@ -469,6 +567,7 @@ void HalationAudioProcessorEditor::refreshFromProcessor()
         strip.grMeter.push (processorRef.meterReduction[(size_t) b].exchange (0.0f));
         red[(size_t) b] = strip.grMeter.getDisplayed();
         strip.setRange (edges[b], edges[b + 1]);
+        strip.setBypassed (params.bands[(size_t) b].bypass);
     }
     inMeter.push (processorRef.meterInputPeak.exchange (0.0f));
     outMeter.push (processorRef.meterOutputPeak.exchange (0.0f));
@@ -479,15 +578,50 @@ void HalationAudioProcessorEditor::refreshFromProcessor()
 void HalationAudioProcessorEditor::paint (juce::Graphics& g)
 {
     const auto& t = lnf.theme;
+    const auto bounds = getLocalBounds().toFloat();
+    const float w = bounds.getWidth(), h = bounds.getHeight();
     g.fillAll (t.background);
-    // A faint spectrum along the top edge
-    for (int b = 0; b < halation::numBands; ++b)
+
+    // The light source: a warm bloom behind the spectrum that bleeds through the glass panels, hotter at its centre
     {
-        const float w = (float) getWidth() / halation::numBands;
-        g.setGradientFill (juce::ColourGradient (halationBandColour (b), w * (float) b, 0.0f,
-                                                 halationBandColour (juce::jmin (b + 1, halation::numBands - 1)), w * (float) (b + 1), 0.0f, false));
-        g.fillRect (w * (float) b, 0.0f, w, 3.0f);
+        juce::Graphics::ScopedSaveState save (g);
+        g.addTransform (juce::AffineTransform::scale (1.0f, 0.42f, w * 0.5f, 150.0f));
+        juce::ColourGradient bloom (halationRed().withAlpha (0.20f), w * 0.5f, 150.0f, halationRed().withAlpha (0.0f), w * 0.5f + w * 0.62f, 150.0f, true);
+        bloom.addColour (0.35, juce::Colour (0xffff6a2a).withAlpha (0.09f));
+        g.setGradientFill (bloom);
+        g.fillRect (bounds.withHeight (h * 3.0f).withY (-h));
     }
+    {
+        juce::ColourGradient core (juce::Colour (0xffffb27a).withAlpha (0.10f), w * 0.5f, 110.0f, juce::Colour (0xffffb27a).withAlpha (0.0f), w * 0.5f + w * 0.28f, 110.0f, true);
+        g.setGradientFill (core);
+        g.fillRect (bounds);
+    }
+    // ...falling away into a dark vignette at the edges
+    {
+        juce::ColourGradient vignette (juce::Colours::black.withAlpha (0.0f), w * 0.5f, h * 0.45f, juce::Colours::black.withAlpha (0.55f), 0.0f, h * 1.05f, true);
+        vignette.addColour (0.55, juce::Colours::black.withAlpha (0.0f));
+        g.setGradientFill (vignette);
+        g.fillRect (bounds);
+    }
+
+    // A thin strip of light along the top edge, running through the four band colours, with its own halo
+    {
+        juce::ColourGradient leak (halationBandColour (0), 0.0f, 0.0f, halationBandColour (3), w, 0.0f, false);
+        leak.addColour (0.36, halationBandColour (1));
+        leak.addColour (0.66, halationBandColour (2));
+        juce::Path strip; strip.addRectangle (0.0f, 0.0f, w, 2.0f);
+        paintGlow (g, strip, halationRed().withAlpha (0.7f), 10);
+        g.setGradientFill (leak);
+        g.fillPath (strip);
+    }
+
+    // Film grain, so the black reads as something photographed
+    if (grain.isValid())
+    {
+        g.setTiledImageFill (grain, 0, 0, 1.0f);
+        g.fillRect (bounds);
+    }
+
     paintHeader (g, getWidth(), "Halation", LBAUDIO_PLUGIN_TYPE, t);
     paintPanel (g, globalPanel, t);
 }

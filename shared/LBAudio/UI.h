@@ -44,7 +44,14 @@ enum class KnobStyle
     Orbit     // fine arc with a "planet" dot riding its end
 };
 
-enum class PanelStyle { Filled, Outline, Screen };
+enum class PanelStyle { Filled, Outline, Screen, Glass };
+
+// A soft bloom around a path: its outline blurred and filled in a colour.
+inline void paintGlow (juce::Graphics& g, const juce::Path& p, juce::Colour c, int radius)
+{
+    if (c.getAlpha() > 0 && radius > 0)
+        juce::DropShadow (c, radius, {}).drawForPath (g, p);
+}
 
 struct Theme
 {
@@ -62,6 +69,10 @@ struct Theme
     // Title lettering
     float titleSize = 24.0f, titleKerning = 0.0f, typeKerning = 0.0f;
     bool titleBold = true, titleItalic = false, titleCentred = false;
+    // Bloom: 0 is off (the original look). Above 0, lit things (value arcs, pointers, switches that are on, meters)
+    // glow in their own colour, fringed with glowTint, and the title glows in titleGlow.
+    float glow = 0.0f;
+    juce::Colour glowTint { juce::Colours::transparentBlack }, titleGlow { juce::Colours::transparentBlack };
 };
 
 inline const Theme& defaultTheme() { static const Theme t; return t; }
@@ -145,22 +156,49 @@ public:
             }
             case KnobStyle::Halo:
             {
-                const float lineW = 5.0f, arcR = radius - lineW;
+                const bool glows = theme.glow > 0.0f;
+                // A glowing knob sits a little further inside its bounds, so the bloom isn't cut off
+                const float lineW = glows ? 4.5f : 5.0f, arcR = radius - lineW - (glows ? 2.0f : 0.0f);
+                const juce::PathStrokeType stroke (lineW, juce::PathStrokeType::curved, round);
                 g.setColour (col (theme.track));
-                g.strokePath (arc (arcR, startAngle, endAngle), { lineW, juce::PathStrokeType::curved, round });
-                if (hasValue)
+                g.strokePath (arc (arcR, startAngle, endAngle), stroke);
+                if (hasValue && glows)
+                {
+                    // The value arc as a lit filament: a coloured bloom fringed with the glow tint, the arc, then a
+                    // hot white core
+                    const auto valueArc = arc (arcR, a0, a1);
+                    juce::Path lit;
+                    stroke.createStrokedPath (lit, valueArc);
+                    const auto fringe = theme.glowTint.isTransparent() ? theme.accent : theme.glowTint;
+                    paintGlow (g, lit, col (fringe.withMultipliedAlpha (juce::jmin (1.0f, 0.9f * theme.glow))), 8);
+                    paintGlow (g, lit, col (theme.accent.withMultipliedAlpha (juce::jmin (1.0f, 1.0f * theme.glow))), 3);
+                    g.setColour (col (theme.accent));
+                    g.strokePath (valueArc, stroke);
+                    g.setColour (col (theme.accent.interpolatedWith (juce::Colours::white, 0.65f)));
+                    g.strokePath (valueArc, { 1.4f, juce::PathStrokeType::curved, round });
+                }
+                else if (hasValue)
                 {
                     g.setColour (col (theme.accent.withAlpha (0.16f)));
                     g.strokePath (arc (arcR, a0, a1), { lineW * 3.2f, juce::PathStrokeType::curved, round });
                     g.setColour (col (theme.accent.withAlpha (0.3f)));
                     g.strokePath (arc (arcR, a0, a1), { lineW * 1.8f, juce::PathStrokeType::curved, round });
                     g.setColour (col (theme.accent));
-                    g.strokePath (arc (arcR, a0, a1), { lineW, juce::PathStrokeType::curved, round });
+                    g.strokePath (arc (arcR, a0, a1), stroke);
                 }
-                const float knobR = arcR - 9.0f;
+                const float knobR = arcR - (glows ? 8.0f : 9.0f);
                 paintCap (g, cx, cy, knobR, alpha);
+                const auto dot = juce::Rectangle<float> (6.0f, 6.0f).withCentre (onCircle (knobR - 8.0f, angle));
+                if (glows)
+                {
+                    // light catching the rim of the cap, and a pointer that glows like the arc
+                    g.setColour (col (juce::Colours::white.withAlpha (0.07f)));
+                    g.drawEllipse (juce::Rectangle<float> (knobR * 2.0f, knobR * 2.0f).withCentre ({ cx, cy }).reduced (1.5f), 1.0f);
+                    juce::Path d; d.addEllipse (dot);
+                    paintGlow (g, d, col (theme.accent.withMultipliedAlpha (juce::jmin (1.0f, 1.2f * theme.glow))), 4);
+                }
                 g.setColour (col (theme.pointer));
-                g.fillEllipse (juce::Rectangle<float> (6.0f, 6.0f).withCentre (onCircle (knobR - 8.0f, angle)));
+                g.fillEllipse (dot);
                 break;
             }
             case KnobStyle::Hairline:
@@ -274,7 +312,15 @@ public:
 
         const float dot = 7.0f;
         const auto dotArea = juce::Rectangle<float> (dot, dot).withCentre ({ r.getX() + r.getHeight() * 0.5f + 2.0f, r.getCentreY() });
-        g.setColour (on ? theme.accent : theme.track);
+        if (on && theme.glow > 0.0f)
+        {
+            // a switch that's on is lit: a soft light inside the pill and a glowing lamp
+            g.setColour (theme.accent.withAlpha (0.10f * juce::jmin (1.0f, theme.glow)));
+            g.drawRoundedRectangle (r.reduced (2.0f), juce::jmax (0.0f, corner - 2.0f), 3.0f);
+            juce::Path lamp; lamp.addEllipse (dotArea);
+            paintGlow (g, lamp, theme.accent.withMultipliedAlpha (juce::jmin (1.0f, 1.3f * theme.glow)), 5);
+        }
+        g.setColour (on ? (theme.glow > 0.0f ? theme.accent.interpolatedWith (juce::Colours::white, 0.35f) : theme.accent) : theme.track);
         g.fillEllipse (dotArea);
 
         g.setColour (on ? theme.text : theme.dim);
@@ -378,11 +424,23 @@ public:
             const float h = bar.getHeight() * norm (displayed);
             if (h > 0.5f)
             {
+                const auto lit = bar.withTop (bar.getBottom() - h);
+                if (t.glow > 0.0f)
+                {
+                    juce::Path p; p.addRoundedRectangle (lit, barCorner);
+                    paintGlow (g, p, t.meterMid.withAlpha (0.45f * juce::jmin (1.0f, t.glow)), 4);
+                }
                 juce::ColourGradient grad (t.meterLow, 0.0f, bar.getBottom(), t.meterHigh, 0.0f, bar.getY(), false);
                 grad.addColour (norm (-12.0f), t.meterLow);
                 grad.addColour (norm (-3.0f), t.meterMid);
                 g.setGradientFill (grad);
-                g.fillRoundedRectangle (bar.withTop (bar.getBottom() - h), barCorner);
+                g.fillRoundedRectangle (lit, barCorner);
+                if (t.glow > 0.0f)
+                {
+                    // the top of the bar burns brightest
+                    g.setColour (juce::Colours::white.withAlpha (0.55f));
+                    g.fillRect (lit.withHeight (1.5f));
+                }
             }
             if (peakHold > -60.0f)
             {
@@ -397,8 +455,18 @@ public:
             const float h = bar.getHeight() * norm (displayed);
             if (h > 0.5f)
             {
+                if (t.glow > 0.0f)
+                {
+                    juce::Path p; p.addRoundedRectangle (bar.withHeight (h), barCorner);
+                    paintGlow (g, p, t.reduction.withAlpha (0.5f * juce::jmin (1.0f, t.glow)), 4);
+                }
                 g.setGradientFill (juce::ColourGradient (t.reduction, 0.0f, bar.getY(), t.reduction.darker (0.5f), 0.0f, bar.getBottom(), false));
                 g.fillRoundedRectangle (bar.withHeight (h), barCorner);
+                if (t.glow > 0.0f)
+                {
+                    g.setColour (t.reduction.interpolatedWith (juce::Colours::white, 0.6f));
+                    g.fillRect (bar.withHeight (h).removeFromBottom (1.5f));
+                }
             }
             drawTicks (g, t, bar, { 6.0f, 12.0f, 18.0f }, [&] (float db) { return bar.getY() + bar.getHeight() * norm (db); });
         }
@@ -456,6 +524,19 @@ inline void paintPanel (juce::Graphics& g, juce::Rectangle<int> r, const Theme& 
             g.setColour (t.panel);
             g.fillRoundedRectangle (f.reduced (3.0f), juce::jmax (0.0f, t.corner - 1.5f));
             break;
+        case PanelStyle::Glass: // smoked glass, a little lighter at the top, with light catching its top edge
+        {
+            g.setGradientFill (juce::ColourGradient (t.panel.brighter (0.12f), 0.0f, f.getY(), t.panel.darker (0.35f), 0.0f, f.getBottom(), false));
+            g.fillRoundedRectangle (f, t.corner);
+            g.setColour (t.panelEdge);
+            g.drawRoundedRectangle (f.reduced (0.5f), t.corner, 1.0f);
+            const auto rimColour = (t.glowTint.isTransparent() ? t.text : t.glowTint);
+            juce::ColourGradient rim (rimColour.withAlpha (0.0f), f.getX() + t.corner, 0.0f, rimColour.withAlpha (0.0f), f.getRight() - t.corner, 0.0f, false);
+            rim.addColour (0.5, rimColour.withAlpha (0.55f));
+            g.setGradientFill (rim);
+            g.fillRect (f.getX() + t.corner, f.getY(), f.getWidth() - t.corner * 2.0f, 1.0f);
+            break;
+        }
     }
 }
 
@@ -475,9 +556,23 @@ inline void paintHeader (juce::Graphics& g, int width, const juce::String& name,
     auto header = juce::Rectangle<int> (0, 0, width, 56).reduced (20, 0);
     if (t.titleCentred) header = header.withSizeKeepingCentre (total, 56);
 
+    const auto nameArea = header.removeFromLeft (nameW);
+    if (! t.titleGlow.isTransparent())
+    {
+        // The title as a light source: the letters blurred into a wide soft halo and a tighter bright one
+        juce::GlyphArrangement ga;
+        ga.addCurtailedLineOfText (nameFont, upperName, 0.0f, 0.0f, (float) nameArea.getWidth(), true);
+        ga.justifyGlyphs (0, ga.getNumGlyphs(), (float) nameArea.getX(), (float) nameArea.getY(),
+                          (float) nameArea.getWidth(), (float) nameArea.getHeight(), juce::Justification::centredLeft);
+        juce::Path letters;
+        ga.createPath (letters);
+        paintGlow (g, letters, t.titleGlow.withMultipliedAlpha (0.85f), 14);
+        paintGlow (g, letters, t.titleGlow, 5);
+        paintGlow (g, letters, t.headerText.withAlpha (0.55f), 2);
+    }
     g.setColour (t.headerText);
     g.setFont (nameFont);
-    g.drawText (upperName, header.removeFromLeft (nameW), juce::Justification::centredLeft);
+    g.drawText (upperName, nameArea, juce::Justification::centredLeft);
     g.setColour (t.headerType);
     g.setFont (typeFont);
     g.drawText (upperType, header.removeFromLeft (typeW).translated (0, 3), juce::Justification::centredLeft);

@@ -571,29 +571,42 @@ footer a:hover { color: var(--text); }
 .theme-orbit .wordmark { letter-spacing: 0.1em; text-shadow: 0 0 30px rgba(180, 140, 255, .45); }
 .theme-orbit .wordmark small { text-shadow: none; }
 
-/* Halation: the glow around a bright light, in four band colours on graphite */
+/* Halation: the glow that bleeds around a bright light on film. A white-hot core with a red-orange halo on warm black,
+   and each band in its own colour of light: red, amber, green and violet */
 .theme-halation {
-  --bg: #0c0d12; --panel: #15171f; --line: #2a2e3b; --text: #eef0f6; --muted: #8f95a8; --soft: #cdd1dc;
-  --teal: #ffb547; --amber: #4cc9ff; --on-accent: #17110a; --accent-hover: #ffc56e;
-  --well: #101218; --axis: #232632; --chip: rgba(21, 23, 31, .75); --code-bg: #1b1e28;
-  --glow: rgba(255, 181, 71, .12); --glow2: rgba(76, 201, 255, .10);
+  --bg: #0a0708; --panel: #161011; --line: #302325; --text: #fff3ea; --muted: #ab958f; --soft: #e6d6cd;
+  --teal: #ff7a45; --amber: #ffb833; --on-accent: #1a0b06; --accent-hover: #ff946a;
+  --well: #0f0a0b; --axis: #2a1f21; --chip: rgba(22, 16, 17, .75); --code-bg: #1d1415;
+  --glow: rgba(255, 61, 36, .16); --glow2: rgba(255, 140, 70, .10);
+  --band-low: #ff4038; --band-lowmid: #ffb833; --band-highmid: #4cf08c; --band-high: #a688ff;
 }
 .theme-halation .hero::before {
   background:
-    linear-gradient(100deg, transparent 0 46%, rgba(255, 255, 255, .05) 47%, transparent 49%),
-    radial-gradient(ellipse 34% 52% at 70% 30%, rgba(255, 90, 78, .16), transparent 70%),
-    radial-gradient(ellipse 34% 52% at 80% 48%, rgba(255, 181, 71, .14), transparent 70%),
-    radial-gradient(ellipse 34% 52% at 88% 66%, rgba(62, 230, 168, .12), transparent 70%),
-    radial-gradient(ellipse 34% 52% at 96% 84%, rgba(76, 201, 255, .14), transparent 70%),
-    linear-gradient(180deg, #0c0d12 0%, #0f1118 100%);
+    radial-gradient(ellipse 42% 56% at 74% 42%, rgba(255, 61, 36, .24), transparent 70%),
+    radial-gradient(ellipse 20% 24% at 74% 40%, rgba(255, 178, 122, .13), transparent 70%),
+    radial-gradient(ellipse 26% 36% at 98% 92%, rgba(166, 136, 255, .10), transparent 70%),
+    radial-gradient(ellipse 26% 30% at 50% 100%, rgba(76, 240, 140, .05), transparent 70%),
+    linear-gradient(180deg, #0e0809 0%, #0a0708 100%);
 }
 .theme-halation .hero::after {
-  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px;
-  background: linear-gradient(90deg, #ff5a4e, #ffb547 33%, #3ee6a8 66%, #4cc9ff);
+  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px;
+  background: linear-gradient(90deg, var(--band-low), var(--band-lowmid) 36%, var(--band-highmid) 66%, var(--band-high));
+  box-shadow: 0 0 14px rgba(255, 61, 36, .55), 0 0 40px rgba(255, 61, 36, .25);
 }
-.theme-halation .wordmark { font-weight: 650; font-stretch: 112%; letter-spacing: 0.06em; font-size: clamp(2.4rem, 7.4vw, 5rem); }
-.theme-halation .wordmark small { letter-spacing: 0.1em; font-size: clamp(0.85rem, 0.24em, 1.2rem); }
-.theme-halation .hero-shot img { box-shadow: 0 30px 80px rgba(0, 0, 0, .55), 0 0 0 1px #2a2e3b; }
+.theme-halation .wordmark {
+  font-weight: 650; font-stretch: 112%; letter-spacing: 0.06em; font-size: clamp(2.4rem, 7.4vw, 5rem); color: #fff1e6;
+  text-shadow: 0 0 2px rgba(255, 228, 207, .7), 0 0 14px rgba(255, 61, 36, .7), 0 0 44px rgba(255, 61, 36, .4);
+}
+.theme-halation .wordmark small { letter-spacing: 0.1em; font-size: clamp(0.85rem, 0.24em, 1.2rem); text-shadow: none; color: var(--muted); }
+.theme-halation .hero-shot img { box-shadow: 0 0 0 1px #302325, 0 30px 80px rgba(0, 0, 0, .6), 0 0 100px rgba(255, 61, 36, .2); }
+.theme-halation .btn-primary:not(.is-soon) { box-shadow: 0 0 22px rgba(255, 90, 54, .4); }
+.theme-halation .btn-primary:not(.is-soon):hover { box-shadow: 0 0 32px rgba(255, 90, 54, .6); }
+.theme-halation .shot-notes { grid-template-columns: repeat(2, 1fr); column-gap: clamp(28px, 5vw, 64px); }
+@media (max-width: 800px) { .theme-halation .shot-notes { grid-template-columns: 1fr; } }
+.theme-halation .shot-notes h3::before { background: var(--band-low); box-shadow: 0 0 10px var(--band-low); }
+.theme-halation .shot-notes div:nth-child(2) h3::before { background: var(--band-lowmid); box-shadow: 0 0 10px var(--band-lowmid); }
+.theme-halation .shot-notes div:nth-child(3) h3::before { background: var(--band-highmid); box-shadow: 0 0 10px var(--band-highmid); }
+.theme-halation .shot-notes div:nth-child(4) h3::before { background: var(--band-high); box-shadow: 0 0 10px var(--band-high); }
 
 /* ---- Home page: the new plugins, each card in its own colours -------------------- */
 .new-flag {
@@ -787,9 +800,10 @@ footer a:hover { color: var(--text); }
 .u-snap   { --face: #f5c518; --ink: #111111; --sub: #3d3505; --led: #e63a2e; }
 .u-orbit  { --face: #160e33; --ink: #efeaff; --sub: #a99fcf; --led: #b48cff; }
 .u-hush .unit-shot, .u-snap .unit-shot { opacity: .8; }
-.u-halation  { --face: #15171f; --ink: #eef0f6; --sub: #8f95a8; --led: #ffb547; }
+.u-halation  { --face: #120c0d; --ink: #fff3ea; --sub: #ab958f; --led: #ff5a36; }
 .u-halation .unit-name {
-  background: linear-gradient(90deg, #ff5a4e, #ffb547 35%, #3ee6a8 70%, #4cc9ff); -webkit-background-clip: text; background-clip: text; color: transparent;
+  background: linear-gradient(90deg, #ff4038, #ffb833 35%, #4cf08c 68%, #a688ff); -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 0 6px rgba(255, 61, 36, .55));
 }
 .rack-new { margin-top: clamp(40px, 5vw, 64px); }
 .rack-new .rack-head p { max-width: 62ch; }
