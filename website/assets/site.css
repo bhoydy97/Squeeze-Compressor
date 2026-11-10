@@ -224,13 +224,15 @@ section.block { padding-block: clamp(56px, 8vw, 104px); border-bottom: 1px solid
 .spec th, .spec td { text-align: left; padding: 14px 12px 14px 0; border-top: 1px solid var(--line); vertical-align: top; }
 .spec thead th { border-top: 0; font-size: 0.74rem; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; padding-bottom: 10px; }
 .spec tbody th { font-family: var(--display); font-stretch: 112%; font-weight: 700; width: 22%; white-space: nowrap; }
-.spec td.range { font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--teal); width: 26%; white-space: nowrap; }
+/* display: table-cell, because .range is also the product grid's class below */
+.spec td.range { display: table-cell; font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--teal); width: 26%; white-space: nowrap; }
 .spec td.what { color: var(--soft); }
 @media (max-width: 640px) {
   .spec thead { display: none; }
   .spec tr { display: grid; grid-template-columns: 1fr auto; padding: 12px 0; border-top: 1px solid var(--line); }
   .spec th, .spec td { border: 0; padding: 0; width: auto !important; }
   .spec td.what { grid-column: 1 / -1; margin-top: 4px; font-size: 0.96rem; }
+  .spec td.range-list { white-space: normal; text-align: right; }
 }
 
 /* Recipes */
@@ -800,11 +802,10 @@ footer a:hover { color: var(--text); }
 .u-snap   { --face: #f5c518; --ink: #111111; --sub: #3d3505; --led: #e63a2e; }
 .u-orbit  { --face: #160e33; --ink: #efeaff; --sub: #a99fcf; --led: #b48cff; }
 .u-hush .unit-shot, .u-snap .unit-shot { opacity: .8; }
-.u-halation  { --face: #120c0d; --ink: #fff3ea; --sub: #ab958f; --led: #ff5a36; }
-.u-halation .unit-name {
-  background: linear-gradient(90deg, #ff4038, #ffb833 35%, #4cf08c 68%, #a688ff); -webkit-background-clip: text; background-clip: text; color: transparent;
-  filter: drop-shadow(0 0 6px rgba(255, 61, 36, .55));
-}
+.u-halation  { --face: #120c0d; --ink: #fff1e6; --sub: #ab958f; --led: #ff5a36; }
+/* The name lit like the plugin's own title: white-hot letters with a red-orange halo */
+.u-halation .unit-name { text-shadow: 0 0 1px rgba(255, 228, 207, .7), 0 0 10px rgba(255, 61, 36, .75), 0 0 26px rgba(255, 61, 36, .4); }
+.u-halation .unit-led { opacity: .9; box-shadow: 0 0 8px rgba(255, 61, 36, .8); }
 .rack-new { margin-top: clamp(40px, 5vw, 64px); }
 .rack-new .rack-head p { max-width: 62ch; }
 .rack-new .rack, .rack-complete .rack { max-width: calc(50% - clamp(12px, 2vw, 28px)); }

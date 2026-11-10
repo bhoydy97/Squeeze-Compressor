@@ -15,7 +15,7 @@ Each builds as **VST3** on Windows, macOS and Linux, and also as **Audio Unit** 
 | ![](docs/spread.png) | **Spread** | Stereo width with bass mono, a mono check and a vectorscope |
 | ![](docs/snap.png) | **Snap** | Transient shaper: level-independent attack and sustain |
 | ![](docs/orbit.png) | **Orbit** | Stereo chorus with up to four voices, shown orbiting on screen |
-| ![](docs/halation.png) | **Halation** | Four-band compressor with an exciter in every band, factory presets and your own |
+| ![](docs/halation.png) | **Halation** | Four-band compressor with an exciter in every band (five tones, with a mix), factory presets and your own |
 
 The first five share the house look; Drift, Hush, Spread, Snap, Orbit and Halation each have their own (themes in `shared/LBAudio/UI.h`).
 All of them: double-click a knob to reset it; click a value to type one in (`1.2 s`, `250 ms`, `4k`, `off` all work).
@@ -167,7 +167,9 @@ Four bands (Low, Low Mid, High Mid, High), each with its own compressor and exci
 | Ratio (per band) | 1:1 … 20:1 | How hard |
 | Attack / Release (per band) | 0.1 … 200 ms / 5 ms … 2 s | How fast it clamps down and lets go |
 | Makeup (per band) | −12 … +24 dB | That band's level after compression |
-| Excite (per band) | 0 … 100 % | Adds harmonics made from that band only (air from the highs, weight from the lows). It follows the band's level, so quiet parts get the same colour as loud ones |
+| Excite Tone (per band) | Warm, Tape, Bright, Crunch, Octave | The kind of harmonics: Warm (tube, even and odd), Tape (soft, mostly the 3rd, top rolled off), Bright (crisp, reaching higher), Crunch (dense, edgy), Octave (even only: the octave above). Changing it fades the harmonics out and back in, so it never clicks |
+| Excite Amount (per band) | 0 … 100 % | Adds harmonics made from that band only; turned up they get denser as well as louder. It follows the band's level, so quiet parts get the same colour as loud ones |
+| Excite Mix (per band) | 0 … 100 % | Blends the exciter in (100 % is the full amount) |
 | Solo / Bypass (per band) | on/off | Hear one band (or several); leave a band untouched |
 | Input / Output | −24 … +24 dB | Levels in and out |
 | Mix | 0 … 100 % | Dry/wet (the dry path is phase-matched to the bands, so blends stay flat) |
@@ -249,7 +251,7 @@ Each plugin has a test tool that loads the built VST3 the way a DAW does, then r
 - **Spread:** neutral passthrough, width 0/200 %, bass mono (low side removed, highs and centred bass untouched), mono check, balance law, correlation meter
 - **Snap:** bit-exact when neutral, steady tones untouched, attack shapes fronts not tails, sustain shapes tails not fronts, level independence, mix
 - **Orbit:** bit-exact dry mix, a still voice is an exact delay, depth spreads a pure tone, width 0 stays mono, level with 1-4 voices, tone filter against its maths, stability at 70 % feedback
-- **Halation:** oversampling latency, the bands sum flat, Mix blends in phase, band isolation, each band's compressor against its maths, exciter harmonics made from their own band only, the same at any level and not aliased, solo and bypass, input/output, crossed splits kept in order, every factory preset loads and stays sane, state recall, user presets
+- **Halation:** oversampling latency, the bands sum flat, Mix blends in phase, band isolation, each band's compressor against its maths, exciter harmonics made from their own band only, the same at any level and not aliased, each tone's character and level, Excite Mix and Amount, changing tone without a click, solo and bypass, input/output, crossed splits kept in order, every factory preset loads and stays sane, state recall, user presets
 
 All of them also pass [pluginval](https://github.com/Tracktion/pluginval) at strictness level 10.
 

@@ -178,7 +178,7 @@ void BandSpectrum::paint (juce::Graphics& g)
             const float frac = (float) juce::jlimit (0.0, 1.0, bin - k);
             const float db = bins[(size_t) k] + frac * (bins[(size_t) k + 1] - bins[(size_t) k]);
             const float y = dbToY (db);
-            if (x == plot.getX()) tr.whole.startNewSubPath (x, y); else tr.whole.lineTo (x, y);
+            if (tr.whole.isEmpty()) tr.whole.startNewSubPath (x, y); else tr.whole.lineTo (x, y);
             if (db > -89.0f)
             {
                 if (inShown) tr.shown.lineTo (x, y); else tr.shown.startNewSubPath (x, y);
@@ -325,16 +325,26 @@ BandStrip::BandStrip (juce::AudioProcessorValueTreeState& state, int bandIndex)
       makeup (state, halation::ids::band (bandIndex, "makeup"), "MAKEUP", true),
       attack (state, halation::ids::band (bandIndex, "attack"), "ATTACK"),
       release (state, halation::ids::band (bandIndex, "release"), "RELEASE"),
-      excite (state, halation::ids::band (bandIndex, "excite"), "EXCITE")
+      excite (state, halation::ids::band (bandIndex, "excite"), "AMOUNT"),
+      exciteMix (state, halation::ids::band (bandIndex, "exmix"), "MIX"),
+      tone (state, halation::ids::band (bandIndex, "extone"), halationBandColour (bandIndex))
 {
     setLookAndFeel (&lnf);
+    styleMenus (lnf);
+    toneLabel.setText ("TONE", juce::dontSendNotification);
+    toneLabel.setFont (font (11.5f, true));
+    toneLabel.setColour (juce::Label::textColourId, lnf.theme.dim);
+    toneLabel.setJustificationType (juce::Justification::centred);
+    toneLabel.setInterceptsMouseClicks (false, false);
     for (juce::Component* c : { (juce::Component*) &solo, (juce::Component*) &bypass, (juce::Component*) &threshold,
                                 (juce::Component*) &ratio, (juce::Component*) &makeup, (juce::Component*) &attack,
-                                (juce::Component*) &release, (juce::Component*) &excite, (juce::Component*) &grMeter })
+                                (juce::Component*) &release, (juce::Component*) &excite, (juce::Component*) &exciteMix,
+                                (juce::Component*) &toneLabel, (juce::Component*) &tone, (juce::Component*) &grMeter })
         addAndMakeVisible (c);
     solo.button.setTooltip ("Hear only this band (and any other soloed band)");
     bypass.button.setTooltip ("Leave this band untouched: no compression, no excite");
-    excite.slider.setTooltip ("Adds harmonics made from this band only: brighter highs, or warmer, fuller lows");
+    excite.slider.setTooltip ("How much the exciter adds: more harmonics, and denser as you turn it up");
+    exciteMix.slider.setTooltip ("Blends the exciter in: 100 % is the full amount, lower tucks it under the band");
 }
 
 BandStrip::~BandStrip() { setLookAndFeel (nullptr); }
@@ -345,6 +355,7 @@ void BandStrip::setBypassed (bool shouldBeDimmed)
     dimmed = shouldBeDimmed;
     for (juce::Component* c : { (juce::Component*) &threshold, (juce::Component*) &ratio, (juce::Component*) &makeup,
                                 (juce::Component*) &attack, (juce::Component*) &release, (juce::Component*) &excite,
+                                (juce::Component*) &exciteMix, (juce::Component*) &tone, (juce::Component*) &toneLabel,
                                 (juce::Component*) &grMeter, (juce::Component*) &solo })
         c->setAlpha (dimmed ? 0.42f : 1.0f);
     repaint();
@@ -375,6 +386,21 @@ void BandStrip::paint (juce::Graphics& g)
     g.setColour (t.dim);
     g.setFont (font (11.5f));
     g.drawText (rangeText (lo, hi), titleArea, juce::Justification::centredRight);
+
+    // The exciter's own section: its name, and a hairline in the band's colour fading out to the right
+    if (! exciteHeader.isEmpty())
+    {
+        const auto hdr = exciteHeader.toFloat();
+        g.setColour (col.withAlpha (dimmed ? 0.5f : 0.9f));
+        g.setFont (styledFont (11.0f, true, false, 0.14f));
+        const juce::String name ("EXCITE");
+        const float nameW = juce::GlyphArrangement::getStringWidth (g.getCurrentFont(), name) + 10.0f;
+        g.drawText (name, hdr.withWidth (nameW), juce::Justification::centredLeft);
+        const auto line = juce::Rectangle<float> (hdr.getX() + nameW, hdr.getCentreY(), hdr.getWidth() - nameW, 1.0f);
+        g.setGradientFill (juce::ColourGradient (col.withAlpha (dimmed ? 0.2f : 0.45f), line.getX(), 0.0f,
+                                                 col.withAlpha (0.0f), line.getRight(), 0.0f, false));
+        g.fillRect (line);
+    }
 }
 
 void BandStrip::resized()
@@ -389,14 +415,125 @@ void BandStrip::resized()
     switches.removeFromLeft (8);
     bypass.setBounds (switches);
     r.removeFromTop (8);
+    // Three rows of the same height: the compressor's two, then Excite under its own heading, across the whole
+    // strip: TONE | AMOUNT | MIX
+    const int rowHeight = (r.getHeight() - 20) / 3;
+    auto exciteRow = r.removeFromBottom (rowHeight);
+    exciteHeader = r.removeFromBottom (18);
+    r.removeFromBottom (2);
+    // The compressor above it, with the meter beside its two rows
     grMeter.setBounds (r.removeFromRight (34));
     r.removeFromRight (4);
     const int rowH = r.getHeight() / 2, colW = r.getWidth() / 3;
-    for (auto* k : { &threshold, &ratio, &makeup, &attack, &release, &excite })
+    for (auto* k : { &threshold, &ratio, &makeup, &attack, &release })
         k->slider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, juce::jmin (90, colW - 8), 20);
     auto row1 = r.removeFromTop (rowH), row2 = r;
     threshold.setBounds (row1.removeFromLeft (colW)); ratio.setBounds (row1.removeFromLeft (colW)); makeup.setBounds (row1);
-    attack.setBounds (row2.removeFromLeft (colW)); release.setBounds (row2.removeFromLeft (colW)); excite.setBounds (row2);
+    attack.setBounds (row2.removeFromLeft (colW)); release.setBounds (row2.removeFromLeft (colW));
+
+    const int toneW = juce::roundToInt ((float) exciteRow.getWidth() * 0.4f), knobW = (exciteRow.getWidth() - toneW) / 2;
+    auto toneArea = exciteRow.removeFromLeft (toneW);
+    // the same size of knob as the compressor's above
+    const int compressorKnob = juce::jmin (colW - 8, rowH - 18 - 22);
+    exciteRow = exciteRow.withSizeKeepingCentre (exciteRow.getWidth(), juce::jmin (exciteRow.getHeight(), compressorKnob + 18 + 22));
+    toneArea = toneArea.withSizeKeepingCentre (toneArea.getWidth(), exciteRow.getHeight());
+    for (auto* k : { &excite, &exciteMix })
+        k->slider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, juce::jmin (90, knobW - 8), 20);
+    excite.setBounds (exciteRow.removeFromLeft (knobW).withSizeKeepingCentre (compressorKnob + 8, exciteRow.getHeight()).expanded (6, 0));
+    exciteMix.setBounds (exciteRow.withSizeKeepingCentre (compressorKnob + 8, exciteRow.getHeight()).expanded (6, 0));
+    // The menu sits level with the knobs: its label on their labels' line, the pill across their middle
+    toneArea.reduce (2, 0);
+    auto group = toneArea.withSizeKeepingCentre (toneArea.getWidth(), 18 + compressorKnob + 22);
+    toneLabel.setBounds (group.removeFromTop (18));
+    tone.setBounds (group.withSizeKeepingCentre (group.getWidth(), 26).translated (0, -11));
+}
+
+//==============================================================================
+ToneMenu::ToneMenu (juce::AudioProcessorValueTreeState& state, const juce::String& paramID, juce::Colour c) : colour (c)
+{
+    auto* param = dynamic_cast<juce::AudioParameterChoice*> (state.getParameter (paramID));
+    jassert (param != nullptr);
+    attachment = std::make_unique<juce::ParameterAttachment> (*param, [this] (float v)
+    {
+        selected = juce::jlimit (0, halation::numTones - 1, juce::roundToInt (v));
+        setTooltip (juce::String (halation::toneName (selected)) + ": " + halation::toneDescription (selected));
+        repaint();
+    });
+    attachment->sendInitialUpdate();
+    setWantsKeyboardFocus (true);
+    setMouseCursor (juce::MouseCursor::PointingHandCursor);
+    if (param != nullptr) setTitle (param->getName (64));
+}
+
+void ToneMenu::paint (juce::Graphics& g)
+{
+    const auto& t = lbaudio::ui::themeOf (*this);
+    auto r = getLocalBounds().toFloat().reduced (2.0f);
+    const float corner = r.getHeight() * 0.5f;
+    juce::Path pill; pill.addRoundedRectangle (r, corner);
+    // A lit outline in the band's colour: brighter under the mouse or with keyboard focus
+    const bool hot = hover || hasKeyboardFocus (false);
+    paintGlow (g, pill, colour.withAlpha (hot ? 0.55f : 0.3f), hot ? 7 : 5);
+    g.setColour (t.background.withAlpha (0.92f));
+    g.fillPath (pill);
+    g.setColour (colour.withAlpha (hot ? 0.95f : 0.7f));
+    g.strokePath (pill, juce::PathStrokeType (1.2f));
+
+    // The name, and a chevron
+    auto inner = r.reduced (corner * 0.55f, 0.0f);
+    const auto chevronArea = inner.removeFromRight (10.0f);
+    inner.removeFromRight (4.0f);
+    g.setColour (colour.interpolatedWith (juce::Colours::white, 0.35f));
+    g.setFont (styledFont (11.0f, true, false, 0.05f));
+    g.drawFittedText (juce::String (halation::toneName (selected)).toUpperCase(), inner.toNearestInt(), juce::Justification::centred, 1, 0.8f);
+    juce::Path chevron;
+    const auto cc = chevronArea.getCentre();
+    chevron.startNewSubPath (cc.x - 3.5f, cc.y - 1.5f);
+    chevron.lineTo (cc.x, cc.y + 2.0f);
+    chevron.lineTo (cc.x + 3.5f, cc.y - 1.5f);
+    g.setColour (colour);
+    g.strokePath (chevron, juce::PathStrokeType (1.5f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+}
+
+void ToneMenu::mouseDown (const juce::MouseEvent&) { showMenu(); }
+
+bool ToneMenu::keyPressed (const juce::KeyPress& k)
+{
+    if (k == juce::KeyPress::upKey || k == juce::KeyPress::downKey)
+    {
+        choose (juce::jlimit (0, halation::numTones - 1, selected + (k == juce::KeyPress::downKey ? 1 : -1)));
+        return true;
+    }
+    if (k == juce::KeyPress::returnKey || k == juce::KeyPress::spaceKey) { showMenu(); return true; }
+    return false;
+}
+
+void ToneMenu::choose (int index)
+{
+    if (index != selected) attachment->setValueAsCompleteGesture ((float) index);
+}
+
+void ToneMenu::showMenu()
+{
+    juce::PopupMenu menu;
+    menu.addSectionHeader ("EXCITE TONE");
+    for (int i = 0; i < halation::numTones; ++i)
+        menu.addItem (juce::PopupMenu::Item (juce::String (halation::toneName (i)) + "    " + halation::toneDescription (i))
+                          .setID (i + 1).setTicked (i == selected));
+    juce::Component::SafePointer<ToneMenu> safe (this);
+    menu.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (this).withMinimumWidth (getWidth()),
+                        [safe] (int r) { if (safe != nullptr && r > 0) safe->choose (r - 1); });
+}
+
+// Menus in the faceplate's colours, lit in the accent (a band's colour, or white-hot) where the mouse is
+void styleMenus (lbaudio::ui::LookAndFeel& l)
+{
+    const auto& t = l.theme;
+    l.setColour (juce::PopupMenu::backgroundColourId, juce::Colour (0xff161011));
+    l.setColour (juce::PopupMenu::textColourId, t.text);
+    l.setColour (juce::PopupMenu::headerTextColourId, t.dim);
+    l.setColour (juce::PopupMenu::highlightedBackgroundColourId, t.accent.withAlpha (0.22f));
+    l.setColour (juce::PopupMenu::highlightedTextColourId, juce::Colours::white);
 }
 
 //==============================================================================
@@ -505,6 +642,7 @@ HalationAudioProcessorEditor::HalationAudioProcessorEditor (HalationAudioProcess
     : AudioProcessorEditor (&p), processorRef (p)
 {
     setLookAndFeel (&lnf);
+    styleMenus (lnf);
     for (int b = 0; b < halation::numBands; ++b)
     {
         strips[(size_t) b] = std::make_unique<BandStrip> (processorRef.apvts, b);

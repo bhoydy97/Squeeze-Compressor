@@ -12,8 +12,8 @@
 //                -> high half -> AP(low) -> LR(high) -> [High Mid, High]
 //
 // Compressor: Squeeze's (feed-forward, soft knee, stereo-linked peak detection).
-// Exciter: each band, scaled by its own envelope to a steady level, goes through Ember's Tube curve (even and
-// odd harmonics); what the curve adds, minus its fundamental, is scaled back and added to the band. So the
+// Exciter: each band, scaled by its own envelope to a steady level, goes through the curve of its tone (Warm is
+// Ember's Tube curve); what the curve adds, minus its fundamental and DC, is scaled back and added to the band. So the
 // harmonics sit at the same distance below the band whether it's loud or quiet, the band's own level
 // doesn't move, and each band's harmonics are made from that band alone. They're high-passed at the band's
 // lower edge, so nothing the envelope does can thump below the band.
@@ -138,6 +138,17 @@ inline double bandResponseDb (int band, const Splits& s, double hz, double fs)
 
 //==============================================================================
 // Exciter
+//
+// Each band can pick a tone: the curve its harmonics come from, and how they're filtered.
+//   Warm    the tube curve (even and odd harmonics), full and round: the original
+//   Tape    a soft, symmetric curve (mostly the 3rd harmonic), with the top of the harmonics rolled off
+//   Bright  the soft curve driven much harder, for crisp odd harmonics that reach higher (no 2nd), high-passed
+//   Crunch  an asymmetric, harder clip: dense even and odd harmonics, with an edge
+//   Octave  an even curve, so the harmonics start an octave above the note: weight on small speakers, or shimmer
+//
+// Amount sets how loud the harmonics are, as before, and how hard the band is driven into the curve: low settings
+// give mostly the 2nd and 3rd, high settings get denser. Each tone's level is matched to Warm's at every amount.
+// Mix then blends the harmonics in (100 % is the full amount).
 constexpr float tubeBias = 0.25f;
 
 inline float tube (float x) noexcept
@@ -147,45 +158,181 @@ inline float tube (float x) noexcept
     return (std::tanh (x + tubeBias) - tb) * norm;
 }
 
-constexpr float exciteDrive = 2.0f;           // into the curve, at the band's peak level
-constexpr float exciteFloor = 0.001f;          // -60 dB: quieter than this, a band isn't lifted to full level
-constexpr double exciteAttackS = 0.001, exciteReleaseS = 0.12;
-
-// How much of the fundamental the curve takes away from a full-level sine, put back so only harmonics are added
-inline float exciteFundamental() noexcept
+constexpr float crunchBias = 0.2f;
+inline float hardClip (float x) noexcept { const float x2 = x * x; return x / std::sqrt (std::sqrt (1.0f + x2 * x2)); }
+inline float crunch (float x) noexcept
 {
-    static const float c = []
-    {
-        double s = 0.0;
-        constexpr int n = 4096;
-        for (int i = 0; i < n; ++i)
-        {
-            const double ph = 2.0 * lbaudio::dsp::pi * i / n, u = std::sin (ph);
-            s += (tube ((float) u * exciteDrive) / exciteDrive - u) * u;
-        }
-        return (float) (-2.0 * s / n);
-    }();
-    return c;
+    static const float hb = hardClip (crunchBias);
+    static const float slope = 1.0f / std::pow (1.0f + std::pow (crunchBias, 4.0f), 1.25f);
+    return (hardClip (x + crunchBias) - hb) / slope;
+}
+inline float softTape (float x) noexcept { return std::tanh (x); }
+inline float evenOctave (float x) noexcept { return x * std::tanh (x); }
+
+enum class Tone { Warm, Tape, Bright, Crunch, Octave };
+constexpr int numTones = 5;
+
+inline const char* toneName (int t)
+{
+    static const char* names[numTones] = { "Warm", "Tape", "Bright", "Crunch", "Octave" };
+    return names[std::clamp (t, 0, numTones - 1)];
+}
+inline const char* toneDescription (int t)
+{
+    static const char* text[numTones] = {
+        "Full and round: tube harmonics, even and odd",
+        "Soft and smooth: mostly the 3rd harmonic, the top rolled off",
+        "Presence and air: crisp harmonics that reach higher",
+        "An edge: dense harmonics, like a driven amp",
+        "An octave up: weight on small speakers, or shimmer on top" };
+    return text[std::clamp (t, 0, numTones - 1)];
 }
 
-// The harmonics of a band scaled to peak at about 1
-inline float exciteHarmonics (float u) noexcept { return tube (u * exciteDrive) / exciteDrive - u + exciteFundamental() * u; }
+constexpr float exciteFloor = 0.001f;          // -60 dB: quieter than this, a band isn't lifted to full level
+constexpr double exciteAttackS = 0.001, exciteReleaseS = 0.12;
+constexpr float exciteMinDrive = 0.15f;         // of the tone's full drive, at the bottom of Amount
+constexpr float exciteWarmGain = 1.5f;          // Warm at 100 %: the 3rd harmonic of a steady tone ~17 dB under it
 
-// Excite 0..1: at 100 % the 3rd harmonic of a steady tone sits about 17 dB under it and the 2nd about 22 dB under
-inline float exciteMix (float amount) noexcept { return 1.5f * amount; }
+// One tone's curve and filters, and tables over its drive: what to take away so only harmonics are left (the
+// fundamental and DC a full-level sine gets from the curve), and how much to lift them to a steady level.
+struct ToneShape
+{
+    float (*curve) (float) = tube;
+    float maxDrive = 2.0f;
+    float highPassAt = 1.0f;   // times the band's lower edge
+    bool steepHighPass = false; // 24 dB/oct rather than 12
+    float lowPassAt = 0.0f;    // times the band's upper edge; 0 for none
+    float gain = 1.0f;         // matches the tone's level at full drive to Warm's
+    static constexpr int tableSize = 65;
+    std::array<float, tableSize> fundamental {}, dc {}, level {};
 
-// One band's exciter: its envelope (stereo-linked) and the high-pass on its harmonics, per channel
+    float driveFor (float amount) const noexcept { return maxDrive * (exciteMinDrive + (1.0f - exciteMinDrive) * std::clamp (amount, 0.0f, 1.0f)); }
+
+    // The harmonics of a band scaled to about 1 (u is the band over its level), at 'amount'
+    float harmonics (float u, float amount) const noexcept
+    {
+        const float drive = driveFor (amount);
+        const float pos = (drive / maxDrive - exciteMinDrive) / (1.0f - exciteMinDrive) * (float) (tableSize - 1);
+        const int i = std::clamp ((int) pos, 0, tableSize - 2);
+        const float f = std::clamp (pos - (float) i, 0.0f, 1.0f);
+        auto at = [i, f] (const std::array<float, tableSize>& t) { return t[(size_t) i] + f * (t[(size_t) i + 1] - t[(size_t) i]); };
+        const float raw = curve (u * drive) / drive - u + at (fundamental) * u - at (dc);
+        return gain * at (level) * raw;
+    }
+};
+
+namespace detail
+{
+// What the curve adds to a full-level sine at 'drive', with the fundamental and DC removed: (fundamental, dc, rms)
+inline std::array<double, 3> analyseCurve (float (*curve) (float), float drive)
+{
+    constexpr int n = 2048;
+    double fund = 0.0, mean = 0.0;
+    std::array<double, n> r {};
+    for (int i = 0; i < n; ++i)
+    {
+        const double u = std::sin (2.0 * lbaudio::dsp::pi * i / n);
+        r[(size_t) i] = curve ((float) u * drive) / drive - u;
+        fund += r[(size_t) i] * u;
+        mean += r[(size_t) i];
+    }
+    fund = -2.0 * fund / n; mean /= n;
+    double sq = 0.0;
+    for (int i = 0; i < n; ++i)
+    {
+        const double u = std::sin (2.0 * lbaudio::dsp::pi * i / n);
+        const double h = r[(size_t) i] + fund * u - mean;
+        sq += h * h;
+    }
+    return { fund, mean, std::sqrt (sq / n) };
+}
+} // namespace detail
+
+inline const ToneShape& toneShape (int t)
+{
+    static const std::array<ToneShape, numTones> shapes = []
+    {
+        std::array<ToneShape, numTones> s;
+        s[0].curve = tube;       s[0].maxDrive = 2.0f;
+        s[1].curve = softTape;   s[1].maxDrive = 1.6f;                                      s[1].lowPassAt = 1.5f;
+        s[2].curve = softTape;   s[2].maxDrive = 4.0f; s[2].highPassAt = 2.5f; s[2].steepHighPass = true;
+        s[3].curve = crunch;     s[3].maxDrive = 3.5f;
+        s[4].curve = evenOctave; s[4].maxDrive = 2.0f; s[4].highPassAt = 1.5f; s[4].steepHighPass = true; s[4].lowPassAt = 4.0f;
+        const double warmRms = detail::analyseCurve (tube, 2.0f)[2];
+        for (auto& shape : s)
+        {
+            const double fullRms = detail::analyseCurve (shape.curve, shape.maxDrive)[2];
+            for (int i = 0; i < ToneShape::tableSize; ++i)
+            {
+                const float drive = shape.maxDrive * (exciteMinDrive + (1.0f - exciteMinDrive) * (float) i / (ToneShape::tableSize - 1));
+                const auto a = detail::analyseCurve (shape.curve, drive);
+                shape.fundamental[(size_t) i] = (float) a[0];
+                shape.dc[(size_t) i] = (float) a[1];
+                shape.level[(size_t) i] = (float) (fullRms / std::max (1.0e-9, a[2]));
+            }
+            shape.gain = (float) (exciteWarmGain * warmRms / fullRms);
+        }
+        s[2].gain *= 1.15f; // Bright's high-pass trims a little of its level: lift it back level with the rest
+        return s;
+    }();
+    return shapes[(size_t) std::clamp (t, 0, numTones - 1)];
+}
+
+// One band's exciter: its envelope (stereo-linked), its tone, and the filters on its harmonics, per channel.
+// A change of tone fades the harmonics out, swaps, and fades them back in, so it never clicks.
 struct Exciter
 {
     double env = 0.0;
-    std::array<lbaudio::dsp::Biquad, 2> highPass;
+    int tone = 0;
+    float fade = 1.0f;
+    double lowEdge = 20.0, highEdge = 20000.0, fs = 48000.0;
+    struct Chain { lbaudio::dsp::Biquad hp1, hp2, lp; bool steep = false, lowPass = false; };
+    std::array<Chain, 2> chain;
 
-    void reset() noexcept { env = 0.0; for (auto& f : highPass) f.reset(); }
-    void setLowEdge (double hz, double fs)
+    void reset() noexcept
     {
-        const auto c = lbaudio::dsp::design (lbaudio::dsp::Shape::HighPass, std::max (20.0, hz), 0.0, butterworthQ, fs);
-        for (auto& f : highPass) f.c = c;
+        env = 0.0;
+        for (auto& c : chain) { c.hp1.reset(); c.hp2.reset(); c.lp.reset(); }
     }
+
+    void setEdges (double lowHz, double highHz, double sampleRate)
+    {
+        lowEdge = lowHz; highEdge = highHz; fs = sampleRate;
+        configure();
+    }
+
+    void setTone (int t)
+    {
+        tone = std::clamp (t, 0, numTones - 1);
+        configure();
+        for (auto& c : chain) { c.hp1.reset(); c.hp2.reset(); c.lp.reset(); }
+    }
+
+    void configure()
+    {
+        using lbaudio::dsp::Shape; using lbaudio::dsp::design;
+        const auto& shape = toneShape (tone);
+        const double nyquistish = fs * 0.45;
+        const auto hp = design (Shape::HighPass, std::clamp (lowEdge * shape.highPassAt, 20.0, nyquistish), 0.0, butterworthQ, fs);
+        const bool lowPass = shape.lowPassAt > 0.0f && highEdge * shape.lowPassAt < nyquistish;
+        const auto lp = design (Shape::LowPass, lowPass ? highEdge * shape.lowPassAt : nyquistish, 0.0, butterworthQ, fs);
+        for (auto& c : chain)
+        {
+            c.hp1.c = c.hp2.c = hp; c.lp.c = lp;
+            c.steep = shape.steepHighPass; c.lowPass = lowPass;
+        }
+    }
+
+    float filter (int ch, float h) noexcept
+    {
+        auto& c = chain[(size_t) ch];
+        h = c.hp1.process (h);
+        if (c.steep) h = c.hp2.process (h);
+        if (c.lowPass) h = c.lp.process (h);
+        return h;
+    }
+
+    void snap() noexcept { for (auto& c : chain) { c.hp1.snapDenormals(); c.hp2.snapDenormals(); c.lp.snapDenormals(); } }
 };
 
 //==============================================================================
@@ -193,6 +340,8 @@ struct BandParams
 {
     float thresholdDb = 0.0f, ratio = 2.0f, attackMs = 10.0f, releaseMs = 120.0f, makeupDb = 0.0f;
     float excite = 0.0f;    // 0..1
+    int tone = 0;           // halation::Tone
+    float exciteMix = 1.0f; // 0..1
     bool solo = false, bypass = false;
 };
 

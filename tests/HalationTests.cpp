@@ -1,5 +1,5 @@
 // Halation tests: the crossover sums flat, Mix stays flat, each band is its own, the compressors' maths, the
-// exciters' harmonics (made from their band only, and not aliased), solo, bypass, presets and state.
+// exciters' harmonics (made from their band only, and not aliased), their tones and mix, solo, bypass, presets and state.
 //   HalationTests <Halation.vst3> [ui-snapshot.png]
 
 #include "Harness.h"
@@ -151,6 +151,7 @@ void runSuite (juce::AudioProcessor& proc)
         // The exciter follows the band's level, so a quiet band gets the same colour as a loud one
         auto ratios = [&] (float inDb)
         {
+            h.apply(); // each level from a clean start: the exciter takes half a second to come down after a loud tone
             const auto out = h.run ((int) sampleRate, sine (inDb, 2000.0f));
             const float f = toneDb (out, settle, out.size(), 2000.0);
             return std::make_pair (toneDb (out, settle, out.size(), 4000.0) - f, toneDb (out, settle, out.size(), 6000.0) - f);
@@ -163,6 +164,73 @@ void runSuite (juce::AudioProcessor& proc)
         const auto out = h.run ((int) sampleRate, sine (-6.0f, 2000.0f));
         const float level = toneDb (out, settle, out.size(), 2000.0) + 6.0f;
         check (std::abs (level) < 0.3f, "...and the tone itself stays at its level", fmt (level) + " dB");
+    }
+    // --- Excite tones, amount and mix ---------------------------------------------------------------------------
+    {
+        // Harmonics 2 to 6 of a 1.3 kHz tone in the High Mid band, in dB under the tone, and the tone's own level
+        struct Spectrum { float tone; std::array<float, 7> h; float total; };
+        auto measure = [&] (const char* tone, const char* amount, const char* mixPct)
+        {
+            defaults (proc); h.set ("High Mid Excite", amount); h.set ("High Mid Excite Tone", tone); h.set ("High Mid Excite Mix", mixPct); h.apply();
+            const auto out = h.run ((int) sampleRate, sine (-12.0f, 1300.0f));
+            Spectrum sp {};
+            sp.tone = toneDb (out, settle, out.size(), 1300.0) + 12.0f;
+            double power = 0.0;
+            for (int k = 2; k <= 6; ++k)
+            {
+                sp.h[(size_t) k] = toneDb (out, settle, out.size(), 1300.0 * k) - (sp.tone - 12.0f);
+                power += std::pow (10.0, sp.h[(size_t) k] / 10.0);
+            }
+            sp.total = (float) (10.0 * std::log10 (power + 1.0e-30));
+            return sp;
+        };
+        const auto warm = measure ("Warm", "100", "100"), tape = measure ("Tape", "100", "100"), bright = measure ("Bright", "100", "100"),
+                   crunch = measure ("Crunch", "100", "100"), octave = measure ("Octave", "100", "100");
+        bool levels = true; juce::String detail;
+        for (const auto* sp : { &warm, &tape, &bright, &crunch, &octave })
+        {
+            levels = levels && std::abs (sp->tone) < 0.3f && std::abs (sp->total - warm.total) < 2.5f;
+            detail << fmt (sp->total, 1) << " ";
+        }
+        check (levels, "Excite tones: each keeps the tone's level and adds harmonics about as loud as Warm's", "harmonics " + detail + "dB under the tone");
+        check (tape.h[2] < -90.0f && tape.h[4] < -90.0f && tape.h[3] - tape.h[5] > 12.0f,
+               "Tape: odd harmonics only, mostly the 3rd", "2nd " + fmt (tape.h[2], 0) + ", 3rd " + fmt (tape.h[3], 1) + ", 5th " + fmt (tape.h[5], 1) + " dB");
+        check (bright.h[2] < -90.0f && bright.h[5] - warm.h[5] > 5.0f && bright.h[3] - bright.h[5] < 8.0f,
+               "Bright: no 2nd, and the upper harmonics well above Warm's", "5th " + fmt (bright.h[5], 1) + " against Warm's " + fmt (warm.h[5], 1) + " dB");
+        check (crunch.h[2] > -40.0f && crunch.h[3] > -25.0f && crunch.h[5] - warm.h[5] > 4.0f,
+               "Crunch: even and odd, denser than Warm", "2nd " + fmt (crunch.h[2], 1) + ", 3rd " + fmt (crunch.h[3], 1) + ", 5th " + fmt (crunch.h[5], 1) + " dB");
+        check (octave.h[2] > -25.0f && octave.h[3] < -90.0f && octave.h[5] < -90.0f,
+               "Octave: the octave above, no odd harmonics", "2nd " + fmt (octave.h[2], 1) + ", 3rd " + fmt (octave.h[3], 0) + " dB");
+
+        const auto halfMix = measure ("Warm", "100", "50"), none = measure ("Warm", "100", "0");
+        check (std::abs (halfMix.total - warm.total + 6.02f) < 0.5f && none.total < -90.0f && std::abs (none.tone) < 0.3f,
+               "Excite Mix: 50 % is 6 dB less, 0 % none, and the tone stays put", fmt (halfMix.total - warm.total) + " dB at 50 %, " + fmt (none.total, 0) + " dB at 0 %");
+
+        const auto gentle = measure ("Warm", "25", "100");
+        const float densityLow = gentle.h[3] - gentle.h[2], densityHigh = warm.h[3] - warm.h[2];
+        check (densityHigh - densityLow > 8.0f && gentle.total < warm.total - 8.0f,
+               "Excite Amount: quieter and gentler turned down, denser turned up",
+               "3rd against 2nd " + fmt (densityLow, 1) + " dB at 25 %, " + fmt (densityHigh, 1) + " dB at 100 %");
+    }
+    {
+        // Changing tone while a note plays fades the harmonics out and back in: no step in the waveform
+        defaults (proc); h.set ("Low Mid Excite", "100"); h.set ("Low Mid Excite Tone", "Warm"); h.apply();
+        auto gen = sine (-12.0f, 150.0f);
+        int t0 = 0;
+        auto shifted = [&] (int i) { return gen (t0 + i); };
+        auto maxStep = [] (const std::vector<float>& v, size_t from, size_t to)
+        {
+            float m = 0.0f;
+            for (size_t i = juce::jmax ((size_t) 1, from); i < juce::jmin (to, v.size()); ++i) m = juce::jmax (m, std::abs (v[i] - v[i - 1]));
+            return m;
+        };
+        const int part = (int) sampleRate / 2;
+        const auto before = h.run (part, shifted); t0 += part;
+        h.set ("Low Mid Excite Tone", "Crunch");
+        const auto after = h.run (part, shifted);
+        const float steady = juce::jmax (maxStep (before, (size_t) part / 2, (size_t) part), maxStep (after, (size_t) part / 2, (size_t) part));
+        const float change = maxStep (after, 0, (size_t) sampleRate / 10);
+        check (change < steady * 1.15f, "Changing tone mid-note: no click", "biggest step " + fmt (change, 4) + " against " + fmt (steady, 4) + " steady");
     }
     defaults (proc); h.set ("High Excite", "100"); h.set ("High Mid Excite", "100"); h.apply();
     {
@@ -280,14 +348,17 @@ void runSuite (juce::AudioProcessor& proc)
 
     // --- State recall ------------------------------------------------------------------------------------------
     proc.setCurrentProgram (3);
-    defaults (proc); h.set ("Mid Split", "1800"); h.set ("High Mid Excite", "42"); h.setBool ("Low Bypass", true); h.apply();
+    defaults (proc); h.set ("Mid Split", "1800"); h.set ("High Mid Excite", "42"); h.setBool ("Low Bypass", true);
+    h.set ("High Mid Excite Tone", "Crunch"); h.set ("High Mid Excite Mix", "65"); h.apply();
     juce::MemoryBlock state;
     proc.getStateInformation (state);
     defaults (proc); h.apply();
     proc.setStateInformation (state.getData(), (int) state.getSize());
     h.apply();
-    check (h.text ("Mid Split") == "1.80 kHz" && h.text ("High Mid Excite") == "42 %" && h.text ("Low Bypass") == "On",
-           "State save/restore", "'" + h.text ("Mid Split") + "', '" + h.text ("High Mid Excite") + "', '" + h.text ("Low Bypass") + "'");
+    check (h.text ("Mid Split") == "1.80 kHz" && h.text ("High Mid Excite") == "42 %" && h.text ("Low Bypass") == "On"
+               && h.text ("High Mid Excite Tone") == "Crunch" && h.text ("High Mid Excite Mix") == "65 %",
+           "State save/restore", "'" + h.text ("Mid Split") + "', '" + h.text ("High Mid Excite") + "', '" + h.text ("Low Bypass") + "', '"
+                                 + h.text ("High Mid Excite Tone") + "', '" + h.text ("High Mid Excite Mix") + "'");
 
     // --- User presets (built-in processor only: they're files on disk) ----------------------------------------
     if (auto* halation = dynamic_cast<HalationAudioProcessor*> (&proc))
@@ -323,7 +394,7 @@ int main (int argc, char** argv)
         {
             renderSnapshot<HalationAudioProcessor, HalationAudioProcessorEditor> (png, [] (Harness& h)
             {
-                h.proc.setCurrentProgram (1); // Mix glue
+                h.proc.setCurrentProgram (12); // Master polish: every band working, with Tape on the lows and Bright on the highs
             }, beat (-7.0f), 90);
         });
 }

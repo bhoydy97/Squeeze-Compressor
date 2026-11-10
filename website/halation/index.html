@@ -55,7 +55,7 @@
         </ul>
       </div>
       <figure class="hero-shot">
-        <img src="../assets/halation-ui.webp" width="2400" height="1280" alt="The Halation multiband compressor window, glowing on warm black: the HALATION title lit with a red-orange halo above a live spectrum split into four bands, each glowing in its own colour of light (red, amber, green and violet), with draggable split points at 120 Hz, 1 kHz and 6 kHz and gain reduction hanging from the top of each band; below, four band strips with Solo and Bypass and lit knobs for threshold, ratio, makeup, attack, release and excite, a preset bar reading Mix glue, and input, output and mix controls with glowing meters.">
+        <img src="../assets/halation-ui.webp" width="2400" height="1440" alt="The Halation multiband compressor window, glowing on warm black, on the Master polish preset: the HALATION title lit with a red-orange halo above a live spectrum split into four bands, each glowing in its own colour of light (red, amber, green and violet), with draggable split points at 100 Hz, 900 Hz and 7 kHz and gain reduction hanging from the top of each band; below, four band strips, each with Solo and Bypass, knobs for threshold, ratio, makeup, attack and release, a gain-reduction meter, and an Excite section with a Tone menu (Tape on the Low band, Warm on the two middle bands, Bright on the High band) and Amount and Mix knobs; on the right, input, output and mix controls with glowing meters.">
       </figure>
     </div>
   </section>
@@ -109,7 +109,7 @@
           <video controls playsinline preload="none" width="540" height="960" poster="../promo/posters/lbaudio-halation-promo.jpg" aria-label="Halation in action">
             <source src="../promo/lbaudio-halation-promo.mp4" type="video/mp4">
           </video>
-          <figcaption><strong>Halation in action</strong><span>Each band solo&#x27;d while it&#x27;s set on Gimme Shelter: splits, compressors and excite, then before and after · 63 s</span></figcaption>
+          <figcaption><strong>Halation in action</strong><span>Each band solo&#x27;d while it&#x27;s set on Gimme Shelter: splits, compressors and excite tones, then before and after · 63 s</span></figcaption>
         </figure>
       </div>
     </div>
@@ -127,8 +127,8 @@
           <p>A boomy bass note turns down only the bass; the vocal and the cymbals don&#x27;t duck with it. Each band has its own threshold, ratio, attack, release and makeup.</p>
         </div>
         <div>
-          <h3>An exciter in every band</h3>
-          <p>Excite adds harmonics made from that band alone: air from the highs, presence from the mids, and weight from the lows that you can hear on a phone speaker.</p>
+          <h3>An exciter in every band, in five tones</h3>
+          <p>Excite adds harmonics made from that band alone, in the tone you pick: Warm, Tape, Bright, Crunch or Octave. Amount sets how much, and Mix blends it in. Octave gives a bass weight you can hear on a phone; Bright adds air on top.</p>
         </div>
         <div>
           <h3>Presets to start from</h3>
@@ -146,7 +146,7 @@
     <div class="wrap">
       <div class="section-head">
         <h2>The controls</h2>
-        <p>Each band has its own Threshold, Ratio, Attack, Release, Makeup, Excite, Solo and Bypass; the splits, Input, Output and Mix are for the whole plugin. Double-click any knob to reset it, or click a value and type one in.</p>
+        <p>Each band has its own Threshold, Ratio, Attack, Release and Makeup, an exciter with its own Tone, Amount and Mix, and Solo and Bypass; the splits, Input, Output and Mix are for the whole plugin. Double-click any knob to reset it, or click a value and type one in.</p>
       </div>
       <table class="spec">
         <thead><tr><th scope="col">Control</th><th scope="col">Range</th><th scope="col">What it does</th></tr></thead>
@@ -157,7 +157,9 @@
           <tr><th scope="row">Attack</th><td class="range">0.1 to 200 ms</td><td class="what">How fast it reacts. Slower lets the front of each hit through.</td></tr>
           <tr><th scope="row">Release</th><td class="range">5 ms to 2 s</td><td class="what">How fast it lets go.</td></tr>
           <tr><th scope="row">Makeup</th><td class="range">−12 to +24 dB</td><td class="what">The band&#x27;s level afterwards: use it to rebalance the bands as well as to make up.</td></tr>
-          <tr><th scope="row">Excite</th><td class="range">0 to 100 %</td><td class="what">Adds harmonics made from that band only. It follows the band&#x27;s level, so quiet parts get the same colour as loud ones.</td></tr>
+          <tr><th scope="row">Excite Tone</th><td class="range range-list">Warm, Tape, Bright, Crunch, Octave</td><td class="what">The kind of harmonics: Warm is full and round, Tape soft and smooth, Bright crisp and airy, Crunch edgy and dense, and Octave adds the octave above the note. Changing it while the track plays doesn&#x27;t click.</td></tr>
+          <tr><th scope="row">Excite Amount</th><td class="range">0 to 100 %</td><td class="what">How much the exciter adds, made from that band only. Turned up, the harmonics get denser as well as louder. It follows the band&#x27;s level, so quiet parts get the same colour as loud ones.</td></tr>
+          <tr><th scope="row">Excite Mix</th><td class="range">0 to 100 %</td><td class="what">Blends the exciter in. Drive Amount hard for a dense colour, then bring Mix down to tuck it under the band.</td></tr>
           <tr><th scope="row">Solo / Bypass</th><td class="range">On / off</td><td class="what">Solo to hear one band (or several) on its own. Bypass leaves a band untouched.</td></tr>
           <tr><th scope="row">Input / Output</th><td class="range">−24 to +24 dB</td><td class="what">The level into and out of Halation.</td></tr>
           <tr><th scope="row">Mix</th><td class="range">0 to 100 %</td><td class="what">Blends in the original. It&#x27;s phase-matched to the bands, so any blend stays clean.</td></tr>
@@ -180,8 +182,8 @@
         </li>
         <li>
           <h3>808 that cuts through</h3>
-          <p class="settings">Preset 808 weight · Low split 80–110 Hz · Low excite 50–70 %</p>
-          <p class="why">The sub stays steady, and its harmonics carry it on small speakers.</p>
+          <p class="settings">Preset 808 weight · Low split 80–110 Hz · Low excite Octave, 50–70 %</p>
+          <p class="why">The sub stays steady, and the octave above it carries it on small speakers.</p>
         </li>
         <li>
           <h3>Harsh vocal, smoothed</h3>
@@ -190,7 +192,7 @@
         </li>
         <li>
           <h3>Master with air</h3>
-          <p class="settings">Preset Master polish · 1.5:1 everywhere · High excite 15–25 %</p>
+          <p class="settings">Preset Master polish · 1.5:1 everywhere · High excite Bright, 15–25 %</p>
           <p class="why">Gentle control across the range, and a little extra sheen on top.</p>
         </li>
       </ul>
@@ -255,6 +257,10 @@
         <div>
           <h3>How is Excite different from an EQ boost?</h3>
           <p>An EQ boost turns up what&#x27;s already there. Excite adds new harmonics above the notes in that band, so a dull or quiet part gains brightness or weight that an EQ can&#x27;t find.</p>
+        </div>
+        <div>
+          <h3>Which Excite tone should I use?</h3>
+          <p>Start with Warm, then try the others by ear. Octave helps a bass or 808 come through on phones and laptops, Bright adds air to the top, Tape warms the lows and mids without an edge, and Crunch gives drums and rap vocals some bite.</p>
         </div>
       </div>
     </div>

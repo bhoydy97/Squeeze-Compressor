@@ -17,7 +17,9 @@ inline constexpr const char* mix    = "mix";
 
 // Per-band parameter IDs: "b1_threshold" ... "b4_bypass"
 inline juce::String band (int b, const char* what) { return "b" + juce::String (b + 1) + "_" + what; }
-inline const char* const bandControls[] = { "threshold", "ratio", "attack", "release", "makeup", "excite", "solo", "bypass" };
+inline const char* const bandControls[] = { "threshold", "ratio", "attack", "release", "makeup", "excite", "solo", "bypass",
+                                            "extone", "exmix" };
+inline constexpr int numBandControls = (int) std::size (bandControls);
 }
 
 class HalationAudioProcessor final : public juce::AudioProcessor
@@ -98,11 +100,11 @@ private:
 
     // Smoothed values
     float inGain = 1.0f, outGain = 1.0f, mix = 1.0f, smoothCoeff = 0.001f;
-    std::array<float, halation::numBands> excite {};
+    std::array<float, halation::numBands> excite {}, exciteMix {};
 
     std::atomic<float>* pSplit[3] {};
     std::atomic<float>* pInput = nullptr; std::atomic<float>* pOutput = nullptr; std::atomic<float>* pMix = nullptr;
-    std::array<std::array<std::atomic<float>*, 8>, halation::numBands> pBand {};
+    std::array<std::array<std::atomic<float>*, halation::ids::numBandControls>, halation::numBands> pBand {};
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (HalationAudioProcessor)
 };

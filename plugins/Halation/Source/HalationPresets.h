@@ -15,8 +15,8 @@ struct Preset
     std::vector<std::pair<const char*, float>> values;
 };
 
-// Parameter IDs: "split1/2/3", "<b>_threshold|ratio|attack|release|makeup|excite|solo|bypass" with b = b1..b4,
-// "input", "output", "mix".
+// Parameter IDs: "split1/2/3", "<b>_threshold|ratio|attack|release|makeup|excite|extone|exmix|solo|bypass" with
+// b = b1..b4, "input", "output", "mix". Tones by number: 0 Warm, 1 Tape, 2 Bright, 3 Crunch, 4 Octave.
 inline const std::vector<Preset>& factoryPresets()
 {
     static const std::vector<Preset> presets = {
@@ -31,12 +31,12 @@ inline const std::vector<Preset>& factoryPresets()
             { "b4_excite", 10 } } },
         { "Bright and airy", "Mix bus", {
             { "split3", 7000 },
-            { "b3_excite", 15 },
+            { "b3_excite", 15 }, { "b3_extone", 2 },
             { "b4_threshold", -30 }, { "b4_ratio", 2 }, { "b4_attack", 5 }, { "b4_release", 80 }, { "b4_makeup", 1.5f },
-            { "b4_excite", 45 } } },
+            { "b4_excite", 45 }, { "b4_extone", 2 } } },
         { "Lo-fi warmth", "Mix bus", {
             { "split2", 800 }, { "split3", 5000 },
-            { "b1_excite", 25 }, { "b2_excite", 35 },
+            { "b1_excite", 25 }, { "b1_extone", 1 }, { "b2_excite", 35 }, { "b2_extone", 1 },
             { "b3_threshold", -26 }, { "b3_ratio", 3 }, { "b3_attack", 10 }, { "b3_release", 120 },
             { "b4_makeup", -6 }, { "mix", 85 } } },
 
@@ -44,13 +44,13 @@ inline const std::vector<Preset>& factoryPresets()
         { "808 weight", "Beats", {
             { "split1", 100 },
             { "b1_threshold", -20 }, { "b1_ratio", 4 }, { "b1_attack", 30 }, { "b1_release", 120 }, { "b1_makeup", 3 },
-            { "b1_excite", 60 },
+            { "b1_excite", 60 }, { "b1_extone", 4 }, { "b1_exmix", 85 },
             { "b2_threshold", -22 }, { "b2_ratio", 2 }, { "b2_attack", 20 }, { "b2_release", 120 } } },
         { "Punchy drums", "Beats", {
             { "split1", 100 }, { "split2", 1200 }, { "split3", 7000 },
             { "b1_threshold", -18 }, { "b1_ratio", 3 }, { "b1_attack", 25 }, { "b1_release", 80 }, { "b1_makeup", 2 },
             { "b2_threshold", -20 }, { "b2_ratio", 3 }, { "b2_attack", 20 }, { "b2_release", 80 }, { "b2_makeup", 1.5f },
-            { "b3_excite", 20 }, { "b4_excite", 25 } } },
+            { "b3_excite", 20 }, { "b3_extone", 3 }, { "b4_excite", 25 }, { "b4_extone", 2 } } },
         { "Tame the hats", "Beats", {
             { "split3", 7000 },
             { "b3_threshold", -28 }, { "b3_ratio", 3 }, { "b3_attack", 2 }, { "b3_release", 80 },
@@ -71,7 +71,7 @@ inline const std::vector<Preset>& factoryPresets()
             { "b1_threshold", -26 }, { "b1_ratio", 4 }, { "b1_attack", 5 }, { "b1_release", 80 }, { "b1_makeup", 2 },
             { "b2_threshold", -26 }, { "b2_ratio", 4 }, { "b2_attack", 5 }, { "b2_release", 80 }, { "b2_makeup", 3 },
             { "b3_threshold", -26 }, { "b3_ratio", 4 }, { "b3_attack", 5 }, { "b3_release", 80 }, { "b3_makeup", 3 },
-            { "b3_excite", 25 },
+            { "b3_excite", 35 }, { "b3_extone", 3 }, { "b3_exmix", 70 },
             { "b4_threshold", -28 }, { "b4_ratio", 4 }, { "b4_attack", 2 }, { "b4_release", 60 }, { "b4_makeup", 1 } } },
 
         // ---- Instruments -----------------------------------------------------------------------------------
@@ -79,11 +79,11 @@ inline const std::vector<Preset>& factoryPresets()
             { "split1", 80 }, { "split2", 400 }, { "split3", 3000 },
             { "b1_threshold", -20 }, { "b1_ratio", 4 }, { "b1_attack", 20 }, { "b1_release", 150 }, { "b1_makeup", 2 },
             { "b2_threshold", -22 }, { "b2_ratio", 3 }, { "b2_attack", 15 }, { "b2_release", 120 },
-            { "b2_excite", 30 } } },
+            { "b2_excite", 30 }, { "b2_extone", 1 } } },
         { "Keys and guitar sparkle", "Instruments", {
             { "split1", 200 }, { "split3", 5000 },
             { "b1_threshold", -24 }, { "b1_ratio", 2 }, { "b1_attack", 20 }, { "b1_release", 150 },
-            { "b3_excite", 15 }, { "b4_excite", 35 } } },
+            { "b3_excite", 15 }, { "b4_excite", 35 }, { "b4_extone", 2 } } },
 
         // ---- Mastering -------------------------------------------------------------------------------------
         { "Master polish", "Mastering", {
@@ -92,14 +92,14 @@ inline const std::vector<Preset>& factoryPresets()
             { "b2_threshold", -20 }, { "b2_ratio", 1.5f }, { "b2_attack", 25 }, { "b2_release", 200 }, { "b2_makeup", 1 },
             { "b3_threshold", -20 }, { "b3_ratio", 1.5f }, { "b3_attack", 20 }, { "b3_release", 180 }, { "b3_makeup", 1 },
             { "b4_threshold", -20 }, { "b4_ratio", 1.5f }, { "b4_attack", 15 }, { "b4_release", 150 }, { "b4_makeup", 1 },
-            { "b1_excite", 10 }, { "b4_excite", 20 } } },
+            { "b1_excite", 10 }, { "b1_extone", 1 }, { "b4_excite", 20 }, { "b4_extone", 2 } } },
         { "Loud and clear", "Mastering", {
             { "split1", 110 }, { "split2", 1000 }, { "split3", 6500 },
             { "b1_threshold", -20 }, { "b1_ratio", 2.5f }, { "b1_attack", 15 }, { "b1_release", 100 }, { "b1_makeup", 3 },
             { "b2_threshold", -20 }, { "b2_ratio", 2.5f }, { "b2_attack", 10 }, { "b2_release", 100 }, { "b2_makeup", 3 },
             { "b3_threshold", -20 }, { "b3_ratio", 2.5f }, { "b3_attack", 10 }, { "b3_release", 100 }, { "b3_makeup", 3 },
             { "b4_threshold", -22 }, { "b4_ratio", 2.5f }, { "b4_attack", 5 }, { "b4_release", 80 }, { "b4_makeup", 3 },
-            { "b4_excite", 15 } } },
+            { "b4_excite", 15 }, { "b4_extone", 2 } } },
     };
     return presets;
 }

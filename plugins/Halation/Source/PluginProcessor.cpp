@@ -41,6 +41,12 @@ juce::AudioProcessorValueTreeState::ParameterLayout HalationAudioProcessor::crea
         layout.add (floatParam (ids::band (b, "release"), n + " Release", skewed (5.0f, 2000.0f, 0.1f, 150.0f), 120.0f, formatMs, parseMs));
         layout.add (floatParam (ids::band (b, "makeup"), n + " Makeup", juce::NormalisableRange<float> (-12.0f, 24.0f, 0.1f), 0.0f, formatSignedDb, parseNumber));
         layout.add (floatParam (ids::band (b, "excite"), n + " Excite", juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 0.0f, formatPercent, parseNumber));
+        {
+            juce::StringArray tones;
+            for (int t = 0; t < numTones; ++t) tones.add (toneName (t));
+            layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { ids::band (b, "extone"), 1 }, n + " Excite Tone", tones, 0));
+        }
+        layout.add (floatParam (ids::band (b, "exmix"), n + " Excite Mix", juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 100.0f, formatPercent, parseNumber));
         layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { ids::band (b, "solo"), 1 }, n + " Solo", false,
                                                                 juce::AudioParameterBoolAttributes().withStringFromValueFunction (formatOnOff)));
         layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { ids::band (b, "bypass"), 1 }, n + " Bypass", false,
@@ -66,9 +72,10 @@ HalationAudioProcessor::HalationAudioProcessor()
     pOutput = apvts.getRawParameterValue (halation::ids::output);
     pMix = apvts.getRawParameterValue (halation::ids::mix);
     for (int b = 0; b < halation::numBands; ++b)
-        for (int k = 0; k < 8; ++k)
+        for (int k = 0; k < halation::ids::numBandControls; ++k)
             pBand[(size_t) b][(size_t) k] = apvts.getRawParameterValue (halation::ids::band (b, halation::ids::bandControls[k]));
     for (auto& m : meterReduction) m.store (0.0f);
+    for (int t = 0; t < halation::numTones; ++t) halation::toneShape (t); // build the tone tables now, not on the audio thread
 
     // Report latency from the start: hosts may ask before prepareToPlay. It doesn't depend on the sample rate.
     auto probe = makeOversampler (2);
@@ -87,6 +94,7 @@ halation::Params HalationAudioProcessor::currentParams() const
         band.thresholdDb = v[0]->load(); band.ratio = v[1]->load(); band.attackMs = v[2]->load();
         band.releaseMs = v[3]->load(); band.makeupDb = v[4]->load(); band.excite = v[5]->load() * 0.01f;
         band.solo = v[6]->load() > 0.5f; band.bypass = v[7]->load() > 0.5f;
+        band.tone = juce::jlimit (0, halation::numTones - 1, juce::roundToInt (v[8]->load())); band.exciteMix = v[9]->load() * 0.01f;
     }
     p.inputDb = pInput->load(); p.outputDb = pOutput->load(); p.mix = pMix->load() * 0.01f;
     return p;
@@ -116,7 +124,13 @@ void HalationAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlo
     inGain = juce::Decibels::decibelsToGain (p.inputDb);
     outGain = juce::Decibels::decibelsToGain (p.outputDb);
     mix = p.mix;
-    for (int b = 0; b < halation::numBands; ++b) excite[(size_t) b] = p.bands[(size_t) b].excite;
+    for (int b = 0; b < halation::numBands; ++b)
+    {
+        excite[(size_t) b] = p.bands[(size_t) b].excite;
+        exciteMix[(size_t) b] = p.bands[(size_t) b].exciteMix;
+        exciters[(size_t) b].fade = 1.0f;
+        exciters[(size_t) b].setTone (p.bands[(size_t) b].tone);
+    }
     currentSplits = { -1.0f, -1.0f, -1.0f };
     reset();
 }
@@ -160,8 +174,8 @@ void HalationAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
     {
         currentSplits = next;
         for (auto& x : crossover) x.set (currentSplits, osFs);
-        const float lowEdges[halation::numBands] = { 20.0f, currentSplits.low, currentSplits.mid, currentSplits.high };
-        for (int b = 0; b < halation::numBands; ++b) exciters[(size_t) b].setLowEdge (lowEdges[b], osFs);
+        const float edges[halation::numBands + 1] = { 20.0f, currentSplits.low, currentSplits.mid, currentSplits.high, 20000.0f };
+        for (int b = 0; b < halation::numBands; ++b) exciters[(size_t) b].setEdges (edges[b], edges[b + 1], osFs);
     }
 
     for (int b = 0; b < halation::numBands; ++b)
@@ -220,40 +234,55 @@ void HalationAudioProcessor::processChunk (float* const* io, int channels, int n
         if (bp.bypass)
         {
             excite[(size_t) b] = bp.excite;
+            exciteMix[(size_t) b] = bp.exciteMix;
             continue;
         }
         float* ptrs[2] = { buf.getWritePointer (0), buf.getWritePointer (channels > 1 ? 1 : 0) };
         const auto stats = compressors[(size_t) b].process (ptrs, channels, nullptr, 0, upN);
         lbaudio::ui::storeMax (meterReduction[(size_t) b], stats.maxGainReductionDb);
 
-        const float target = bp.excite;
+        const float target = bp.excite, mixTarget = bp.exciteMix;
         auto& ex = exciters[(size_t) b];
         if (target > 0.0f || excite[(size_t) b] > 1.0e-4f)
         {
-            float e = excite[(size_t) b];
+            float e = excite[(size_t) b], m = exciteMix[(size_t) b];
             float* x[2] = { buf.getWritePointer (0), buf.getWritePointer (channels > 1 ? 1 : 0) };
             double env = ex.env;
+            const float fadeStep = (float) (1.0 / (0.015 * osFs)); // a change of tone: 15 ms out, swap, 15 ms in
+            const auto* shape = &halation::toneShape (ex.tone);
             for (int i = 0; i < upN; ++i)
             {
                 e += (target - e) * osSmooth;
+                m += (mixTarget - m) * osSmooth;
+                if (ex.tone != bp.tone)
+                {
+                    ex.fade -= fadeStep;
+                    if (ex.fade <= 0.0f) { ex.fade = 0.0f; ex.setTone (bp.tone); shape = &halation::toneShape (ex.tone); }
+                }
+                else if (ex.fade < 1.0f) ex.fade = juce::jmin (1.0f, ex.fade + fadeStep);
+
                 float level = 0.0f;
                 for (int ch = 0; ch < channels; ++ch) level = juce::jmax (level, std::abs (x[ch][i]));
                 env = level + (level > env ? exciteAttack : exciteRelease) * (env - level);
-                const float ref = juce::jmax ((float) env, halation::exciteFloor), mixAmount = halation::exciteMix (e);
+                const float ref = juce::jmax ((float) env, halation::exciteFloor), amount = e * m * ex.fade;
                 for (int ch = 0; ch < channels; ++ch)
                 {
-                    const float h = ref * halation::exciteHarmonics (x[ch][i] / ref);
-                    x[ch][i] += mixAmount * ex.highPass[(size_t) ch].process (h);
+                    const float h = ref * shape->harmonics (x[ch][i] / ref, e);
+                    x[ch][i] += amount * ex.filter (ch, h);
                 }
             }
             ex.env = env < 1.0e-12 ? 0.0 : env;
-            for (auto& f : ex.highPass) f.snapDenormals();
+            ex.snap();
             excite[(size_t) b] = e;
+            exciteMix[(size_t) b] = m;
         }
         else
         {
             excite[(size_t) b] = target;
+            exciteMix[(size_t) b] = mixTarget;
             ex.reset();
+            if (ex.tone != bp.tone) ex.setTone (bp.tone);
+            ex.fade = 1.0f;
         }
     }
 

@@ -10,6 +10,7 @@
 lbaudio::ui::Theme halationTheme();
 juce::Colour halationRed();
 juce::Colour halationBandColour (int band);
+void styleMenus (lbaudio::ui::LookAndFeel&); // pop-up menus in Halation's colours
 
 // The spectrum, split into the four bands: the input faintly behind the output, each band's gain reduction
 // hanging from the top, and the three split points as handles you drag.
@@ -47,7 +48,32 @@ private:
     std::array<float, halation::numBands> reduction {};
 };
 
-// One band's controls: name and range, Solo and Bypass, six knobs and its gain-reduction meter.
+// The tone of a band's exciter: a pill showing its name, lit in the band's colour, that opens a menu of the tones
+// with what each one does. Up and down step through them; Return or Space opens the menu.
+class ToneMenu final : public juce::Component, public juce::SettableTooltipClient
+{
+public:
+    ToneMenu (juce::AudioProcessorValueTreeState& state, const juce::String& paramID, juce::Colour colour);
+    void paint (juce::Graphics&) override;
+    void mouseDown (const juce::MouseEvent&) override;
+    void mouseEnter (const juce::MouseEvent&) override { hover = true; repaint(); }
+    void mouseExit (const juce::MouseEvent&) override { hover = false; repaint(); }
+    bool keyPressed (const juce::KeyPress&) override;
+    void focusGained (FocusChangeType) override { repaint(); }
+    void focusLost (FocusChangeType) override { repaint(); }
+    int getSelected() const { return selected; }
+
+private:
+    void showMenu();
+    void choose (int index);
+    juce::Colour colour;
+    int selected = 0;
+    bool hover = false;
+    std::unique_ptr<juce::ParameterAttachment> attachment;
+};
+
+// One band's controls: name and range, Solo and Bypass, the compressor's five knobs and its gain-reduction meter,
+// and the exciter: its tone, amount and mix.
 class BandStrip final : public juce::Component
 {
 public:
@@ -56,7 +82,7 @@ public:
 
     void setRange (float loHz, float hiHz)
     {
-        if (loHz == lo && hiHz == hi) return;
+        if (juce::exactlyEqual (loHz, lo) && juce::exactlyEqual (hiHz, hi)) return;
         lo = loHz; hi = hiHz; repaint (titleArea);
     }
     // A bypassed band's lights go down: its knobs, meter and light bar dim, so the bands at work stand out
@@ -72,8 +98,10 @@ private:
     bool dimmed = false;
     lbaudio::ui::LookAndFeel lnf;
     lbaudio::ui::Switch solo, bypass;
-    lbaudio::ui::LabelledKnob threshold, ratio, makeup, attack, release, excite;
-    juce::Rectangle<int> titleArea;
+    lbaudio::ui::LabelledKnob threshold, ratio, makeup, attack, release, excite, exciteMix;
+    juce::Label toneLabel;
+    ToneMenu tone;
+    juce::Rectangle<int> titleArea, exciteHeader;
 };
 
 // Preset name and menu, previous and next, and Save.
@@ -104,7 +132,7 @@ public:
     void resized() override;
     void refreshFromProcessor();
 
-    static constexpr int defaultWidth = 1200, defaultHeight = 640;
+    static constexpr int defaultWidth = 1200, defaultHeight = 720;
 
 private:
     void timerCallback() override { refreshFromProcessor(); }
