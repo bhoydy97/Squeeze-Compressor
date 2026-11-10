@@ -229,10 +229,10 @@ section.block { padding-block: clamp(56px, 8vw, 104px); border-bottom: 1px solid
 .spec td.what { color: var(--soft); }
 @media (max-width: 640px) {
   .spec thead { display: none; }
-  .spec tr { display: grid; grid-template-columns: 1fr auto; padding: 12px 0; border-top: 1px solid var(--line); }
+  .spec tr { display: grid; grid-template-columns: 1fr auto; column-gap: 16px; padding: 12px 0; border-top: 1px solid var(--line); }
   .spec th, .spec td { border: 0; padding: 0; width: auto !important; }
   .spec td.what { grid-column: 1 / -1; margin-top: 4px; font-size: 0.96rem; }
-  .spec td.range-list { white-space: normal; text-align: right; }
+  .spec td.range-list { white-space: normal; text-align: right; max-width: 15em; }
 }
 
 /* Recipes */
@@ -949,7 +949,6 @@ body.site {
 .theme-splinter .wordmark small { font-size: clamp(0.85rem, 0.24em, 1.2rem); }
 .theme-splinter .wordmark small { color: var(--muted); }
 .theme-splinter .hero-shot img { box-shadow: 0 30px 80px rgba(0, 0, 0, .6), 0 0 0 1px #26292d, 0 0 70px rgba(62, 224, 143, .05); }
-.shot-caption { margin-top: 12px; font-size: 0.82rem; color: var(--muted); text-align: center; }
 .feature-grid { row-gap: 36px; }
 .feature-grid div:nth-child(3) h3::before { background: var(--teal); }
 .steps { list-style: none; margin: 0; padding: 0; counter-reset: step; }
@@ -962,4 +961,4 @@ body.site {
 .spec-two tbody th { width: 26%; }
 @media (max-width: 640px) { .spec-two tr { grid-template-columns: 1fr; } }
 .u-splinter[href]:hover .unit-name { text-shadow: 0 0 16px rgba(62, 224, 143, .35); }
-.rack-soon .rack-head p a { color: #3ee08f; white-space: nowrap; }
+.rack-new .rack-head p a[href^="splinter"] { color: #3ee08f; white-space: nowrap; }

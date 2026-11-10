@@ -20,9 +20,9 @@ window.LBAUDIO_CONFIG = {
     spread:  { payhipProduct: "zEZPS", price: "\u00a315" },
     snap:    { payhipProduct: "MVxo4", price: "\u00a315" },
     orbit:   { payhipProduct: "WnV52", price: "\u00a315" },
-    // Multiband. Sold on its own, in no bundle. "Coming soon" until its Payhip code is in.
-    halation:   { payhipProduct: "", price: "" },   // price to be decided
-    splinter:   { payhipProduct: "", price: "" },   // coming soon: buttons read "Coming soon" until this has a Payhip code
+    // Sold on their own, in no bundle. Each reads "Coming soon" until its Payhip code is in.
+    halation:   { payhipProduct: "", price: "" },   // multiband compressor; price to be decided
+    splinter:   { payhipProduct: "", price: "" },   // sampler; price to be decided
     // Bundles. Their savings on the website are worked out from the prices above automatically.
     // "bundle" is the core 5 (its Payhip code stays the same).
     bundle:   { payhipProduct: "z0NFa", price: "\u00a360", includes: ["squeeze", "carve", "ember", "haze", "ceiling"] },

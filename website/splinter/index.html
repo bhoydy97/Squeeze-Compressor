@@ -3,11 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Splinter Sampler by LBAudio (coming soon)</title>
-  <meta name="description" content="Splinter is a sampler plugin for producers, coming soon from LBAudio: chop samples on the hits across 16 pads, flip the chops into new patterns and drag the MIDI into your DAW, and give any pad the sound of a classic hardware sampler.">
+  <title>Splinter Sampler by LBAudio</title>
+  <meta name="description" content="Splinter is a sampler plugin for Windows, macOS and Linux (VST3 and AU instrument): it chops your samples on the hits across 16 pads, flips the chops into new patterns you can drag into your DAW as MIDI, and gives any pad the sound of a classic hardware sampler.">
   <meta property="og:type" content="product">
-  <meta property="og:title" content="Splinter Sampler by LBAudio (coming soon)">
-  <meta property="og:description" content="Chop on the hits, flip the chops into new patterns, and give any pad the sound of a classic hardware sampler. A sampler for producers, coming soon.">
+  <meta property="og:title" content="Splinter Sampler by LBAudio">
+  <meta property="og:description" content="Chop on the hits, flip the chops into new patterns, drag out the MIDI, and give any pad the sound of a classic hardware sampler. VST3 and AU for Windows, macOS and Linux.">
   <meta property="og:url" content="https://lbaudio.co.uk/splinter/">
   <meta property="og:image" content="https://lbaudio.co.uk/assets/store/splinter-social-1200x630.png">
   <meta property="og:image:width" content="1200">
@@ -27,12 +27,13 @@
     <a class="brand" href="../index.html">LB<span>Audio</span></a>
     <nav class="nav" aria-label="Main">
       <a class="nav-link" href="../index.html#plugins">All plugins</a>
-      <a class="nav-link" href="#features">Features</a>
+      <a class="nav-link" href="#watch">Watch</a>
+      <a class="nav-link" href="#plugin">The plugin</a>
       <a class="nav-link" href="#flip">Flip</a>
-      <a class="nav-link" href="#eras">Eras</a>
-      <a class="nav-link" href="#pads">Pads</a>
+      <a class="nav-link" href="#controls">Controls</a>
+      <a class="nav-link" href="#specs">Specs</a>
       <a class="nav-link" href="#faq">FAQ</a>
-      <a class="btn btn-primary btn-small" data-buy="splinter" href="#features"><span data-buy-label>Coming soon</span></a>
+      <a class="btn btn-primary btn-small" data-buy="splinter" href="#buy"><span data-buy-label>Buy</span></a>
     </nav>
   </div>
 </header>
@@ -41,55 +42,71 @@
   <section class="hero">
     <div class="wrap">
       <div>
-        <p class="kicker">Sampler &middot; VST3 &amp; AU instrument &middot; Coming soon</p>
+        <p class="kicker">Sampler &middot; VST3 &amp; AU instrument</p>
         <h1 class="wordmark">Splinter<small>by LBAudio</small></h1>
-        <p class="lede">A sampler for producers. Drop in a sample and Splinter chops it on the hits across 16 pads. It can also flip the chops into new patterns in time with your track, and give any pad the sound of a classic hardware sampler.</p>
-        <div class="cta">
-          <a class="btn btn-primary" data-buy="splinter" href="#features"><span data-buy-label>Coming soon</span></a>
-          <a class="btn btn-ghost" href="#features">See what it does</a>
+        <p class="lede">A sampler for producers. Drop in a sample and Splinter chops it on the hits across 16 pads. Play the chops, shape each pad, flip them into new patterns in time with your track, and give any pad the sound of a classic hardware sampler.</p>
+        <div class="cta" id="buy">
+          <a class="btn btn-primary" data-buy="splinter" href="#buy"><span data-buy-label>Buy Splinter</span><span data-price="splinter" hidden></span></a>
+          <a class="btn btn-ghost" href="#watch">Watch it</a>
         </div>
-        <p class="vat-note">Splinter is still being built, so the details on this page may change before it&#x27;s released.</p>
-        <ul class="chips" aria-label="Planned formats and systems">
+        <p class="vat-note">Instant download. Any local VAT is worked out at checkout.</p>
+        <ul class="chips" aria-label="Formats and systems">
           <li>VST3</li><li>AU</li><li>Windows</li><li>macOS</li><li>Linux</li><li>MIDI out</li>
         </ul>
       </div>
       <figure class="hero-shot">
-        <img src="../assets/splinter-ui.png" width="2400" height="1520" alt="An early design of the Splinter sampler window in graphite with green accents: a sample waveform cut into sixteen numbered silver chops with chop 6 selected in green, a four-by-four grid of pads, the controls for the selected pad with an Era switch reading Clean, 12-bit grit, Vintage 26k and Dusty, and a large Flip button with a green edge above a step pattern and a box reading Drag MIDI into your DAW.">
-        <figcaption class="shot-caption">Early design. The finished plugin may look different.</figcaption>
+        <img src="../assets/splinter-ui.webp" width="2400" height="1520" alt="The Splinter sampler window in graphite with green accents, with two bars of a drum beat loaded: the waveform cut on the hits into sixteen numbered chops, chop 3 selected in green with the playhead running through it; a four-by-four grid of pads; the controls for pad 3 with its Era set to Vintage 26k, pitch at minus 2 semitones, the filter at 7 kHz and drive at 35 percent; and on the right a large Flip button above a two-bar step pattern and a box reading Drag MIDI into your DAW.">
       </figure>
     </div>
   </section>
 
-  <section class="block" id="features">
+  <section class="block" id="watch">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>Watch it work</h2>
+        <p>The real plugin on screen, one feature at a time: one vocal and two bars of a beat become a new track, and every sound you hear is played on Splinter.</p>
+      </div>
+      <div class="videos">
+        <figure class="video">
+          <video controls playsinline preload="none" width="540" height="960" poster="../promo/posters/lbaudio-splinter-promo.jpg" aria-label="Splinter in action">
+            <source src="../promo/lbaudio-splinter-promo.mp4" type="video/mp4">
+          </video>
+          <figcaption><strong>Splinter in action</strong><span>Chopping a vocal, playing it as a melody, a beat across three Splinters, every pad control, the Eras, note repeat and Flip · 90 s</span></figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="plugin">
     <div class="wrap">
       <div class="section-head">
         <h2>From a sample to a beat</h2>
-        <p>Splinter is built around the way producers flip samples: chop it, play it, change the pattern, then give it some character.</p>
+        <p>Splinter is built around the way producers flip samples: chop it, play it, shape it, then let Flip suggest a pattern.</p>
       </div>
       <div class="shot-notes shot-notes-solo feature-grid">
         <div>
           <h3>Chops on the hits</h3>
-          <p>Drop in a loop and Splinter finds its tempo and key, cuts it where the hits land and puts each chop on its own pad. Prefer even slices, or want to tap them in yourself? Switch to Even or Tap.</p>
-        </div>
-        <div>
-          <h3>Flip</h3>
-          <p>One button turns your chops into a new pattern, in time with your project. Flip again for another idea, step back to one you liked, then drag the MIDI onto a track in your DAW.</p>
-        </div>
-        <div>
-          <h3>Eras</h3>
-          <p>Give any pad the sound of a classic hardware sampler: crunchy 12-bit, the dark warmth of a low sample rate, or dusty and worn. Or keep it clean.</p>
+          <p>Drop a sample onto the window and Splinter reads its tempo and key from the file name, or works them out by listening. It cuts wherever a new sound starts and puts each chop on its own pad. Prefer equal slices, or want to place the cuts yourself? Switch to Even, or to Tap and tap a pad as it plays.</p>
         </div>
         <div>
           <h3>16 pads, each its own sound</h3>
-          <p>Every pad has its own pitch, start and end, attack and release, filter and drive, so one sample can become a whole kit.</p>
+          <p>Every pad has its own pitch, start and end, attack and release, filter, resonance and drive, and can play in reverse, so one sample becomes a whole kit, or a melody.</p>
+        </div>
+        <div>
+          <h3>Eras</h3>
+          <p>Give any pad the sound of a classic hardware sampler: crunchy 12-bit, the darker, rounder top end of a 26 kHz sampler, or worn and dusty like an old record. Or keep it clean.</p>
+        </div>
+        <div>
+          <h3>Flip</h3>
+          <p>One button turns your chops into a new pattern that plays in time with your project. Flip again for another idea, step back to one you liked, lock the rows you want to keep, then drag the MIDI onto a track.</p>
         </div>
         <div>
           <h3>Swing and note repeat</h3>
-          <p>Swing the pads to taste, and hold a pad with note repeat on for rolls at 1/8, 1/16, 1/16 triplets or 1/32.</p>
+          <p>Hold a pad and it repeats in time: 1/8, 1/16, 1/16 triplets or 1/32, following your project&#x27;s tempo. Swing pushes every other 16th late, from straight to a heavy shuffle.</p>
         </div>
         <div>
           <h3>Plays from your gear</h3>
-          <p>The pads answer to any MIDI pad controller or keyboard your DAW can see, with velocity, so you can finger-drum your chops straight away.</p>
+          <p>The pads answer to any MIDI pad controller or keyboard your DAW can see, with velocity, so you can finger-drum your chops straight away. Or click them.</p>
         </div>
       </div>
     </div>
@@ -104,19 +121,19 @@
       <ol class="principles steps">
         <li>
           <h3>Chop</h3>
-          <p>Load a sample. The chops land on the hits, one to a pad, and the pad you pick lights up with its chop on the waveform.</p>
+          <p>Load a sample. The chops land on the hits, one to a pad, and Splinter works out which chops sound like kicks, snares and hats.</p>
         </li>
         <li>
           <h3>Flip</h3>
-          <p>Choose 1, 2 or 4 bars and how busy the pattern should be, then press Flip. It follows your project&#x27;s tempo and your swing.</p>
+          <p>Choose 1, 2 or 4 bars and how busy the pattern should be, then press Flip. Kick-like chops land on the strong beats and snare-like ones on the backbeat, with your swing.</p>
         </li>
         <li>
           <h3>Keep what works</h3>
-          <p>Lock a row you like and it stays put when you flip again. Step back and forward through your last flips.</p>
+          <p>Lock a row you like and it stays exactly as it is when you flip again. Step back and forward through every flip you&#x27;ve made.</p>
         </li>
         <li>
           <h3>Drag it out</h3>
-          <p>Drag the pattern from Splinter onto a track as MIDI, then move notes, change velocities or chop it up further.</p>
+          <p>Drag the pattern from Splinter onto a track as a MIDI clip, at your project&#x27;s tempo, then move notes, change velocities or chop it up further.</p>
         </li>
       </ol>
     </div>
@@ -133,33 +150,62 @@
         <tbody>
           <tr><th scope="row">Clean</th><td class="what">Your sample exactly as it is.</td></tr>
           <tr><th scope="row">12-bit grit</th><td class="what">The crunch of early 12-bit samplers: punchy drums with a hard, gritty edge.</td></tr>
-          <tr><th scope="row">Vintage 26k</th><td class="what">A low sample rate that rounds off the top end and adds a dark, warm weight, like a sample from an old machine.</td></tr>
-          <tr><th scope="row">Dusty</th><td class="what">Worn and lo-fi: softer highs, a little noise and wobble, as if the loop came off an old record.</td></tr>
+          <tr><th scope="row">Vintage 26k</th><td class="what">A 26 kHz, 12-bit sampler: a softer, rounder top end and a warm weight, like a sample from an old machine.</td></tr>
+          <tr><th scope="row">Dusty</th><td class="what">Worn and lo-fi: the highs and the deepest lows rolled off, with a little hiss, crackle and wobble, as if the loop came off an old record.</td></tr>
         </tbody>
       </table>
     </div>
   </section>
 
-  <section class="block" id="pads">
+  <section class="block" id="controls">
     <div class="wrap">
       <div class="section-head">
-        <h2>Pad controls</h2>
-        <p>Pick a pad and its controls appear next to the grid. These are the controls planned for every pad.</p>
+        <h2>The controls</h2>
+        <p>Pick a pad and its controls appear next to the grid. Chop mode, Swing, Note Repeat, Flip and Volume are for the whole plugin. Double-click any knob to reset it.</p>
       </div>
-      <table class="spec spec-two">
-        <thead><tr><th scope="col">Control</th><th scope="col">What it does</th></tr></thead>
+      <table class="spec">
+        <thead><tr><th scope="col">Control</th><th scope="col">Range</th><th scope="col">What it does</th></tr></thead>
         <tbody>
-          <tr><th scope="row">Pitch</th><td class="what">Tunes the chop up or down in semitones.</td></tr>
-          <tr><th scope="row">Start / End</th><td class="what">Trims where the chop starts and stops playing.</td></tr>
-          <tr><th scope="row">Attack / Release</th><td class="what">Fades the chop in and out, from a hard hit to a soft swell.</td></tr>
-          <tr><th scope="row">Filter / Resonance</th><td class="what">Takes the top off a chop, with resonance to add a peak.</td></tr>
-          <tr><th scope="row">Drive</th><td class="what">Pushes the chop into saturation for weight and bite.</td></tr>
-          <tr><th scope="row">Era</th><td class="what">Clean, 12-bit grit, Vintage 26k or Dusty, per pad.</td></tr>
-          <tr><th scope="row">Reverse</th><td class="what">Plays the chop backwards.</td></tr>
-          <tr><th scope="row">One-shot</th><td class="what">Plays the whole chop from one tap, however briefly you hit the pad.</td></tr>
-          <tr><th scope="row">Choke</th><td class="what">Pads in the same choke group cut each other off, like an open and closed hi-hat.</td></tr>
+          <tr><th scope="row">Pitch</th><td class="range">−24 to +24 semitones</td><td class="what">Tunes the pad&#x27;s chop up or down, so a chop can follow the chords or play a bass line.</td></tr>
+          <tr><th scope="row">Start / End</th><td class="range">0 to 100 %</td><td class="what">Where in the chop the pad starts and stops playing. The knobs show the times in milliseconds.</td></tr>
+          <tr><th scope="row">Attack</th><td class="range">0 to 500 ms</td><td class="what">Fades the chop in, from a hard hit to a soft swell.</td></tr>
+          <tr><th scope="row">Release</th><td class="range">5 ms to 2 s</td><td class="what">With One-shot off, how long the chop takes to fade out after you let go.</td></tr>
+          <tr><th scope="row">Filter</th><td class="range">60 Hz to 20 kHz</td><td class="what">Takes the top off a chop.</td></tr>
+          <tr><th scope="row">Resonance</th><td class="range">0 to 100 %</td><td class="what">Adds a peak at the filter&#x27;s cut-off.</td></tr>
+          <tr><th scope="row">Drive</th><td class="range">0 to 100 %</td><td class="what">Pushes the chop into saturation for weight and bite.</td></tr>
+          <tr><th scope="row">Era</th><td class="range range-list">Clean, 12-bit grit, Vintage 26k, Dusty</td><td class="what">The sound of a type of classic sampler, per pad.</td></tr>
+          <tr><th scope="row">Reverse</th><td class="range">On / off</td><td class="what">Plays the chop backwards.</td></tr>
+          <tr><th scope="row">One-shot</th><td class="range">On / off</td><td class="what">On: the whole chop plays from one tap. Off: it plays while the pad is held.</td></tr>
+          <tr><th scope="row">Choke</th><td class="range">Off, 1 to 4</td><td class="what">Pads in the same choke group cut each other off, like an open and closed hi-hat.</td></tr>
+          <tr><th scope="row">Chop</th><td class="range range-list">On the hits, Even, Tap</td><td class="what">How the sample is cut: wherever a new sound starts, into 16 equal slices, or where you tap a pad as it plays.</td></tr>
+          <tr><th scope="row">Swing</th><td class="range">50 to 75 %</td><td class="what">Pushes every other 16th late in note repeat, Flip patterns and the MIDI you drag out. 50 % is straight.</td></tr>
+          <tr><th scope="row">Note Repeat</th><td class="range range-list">Off, 1/8, 1/16, 1/16T, 1/32</td><td class="what">Hold a pad and it plays again on every step, in time with your project.</td></tr>
+          <tr><th scope="row">Flip Length</th><td class="range range-list">1, 2 or 4 bars</td><td class="what">How long each new pattern is.</td></tr>
+          <tr><th scope="row">Flip Busy</th><td class="range">0 to 100 %</td><td class="what">How many hits a new pattern has, from sparse to busy. Every bar can start on chop 1.</td></tr>
+          <tr><th scope="row">Volume</th><td class="range">−24 to +6 dB</td><td class="what">Splinter&#x27;s output level.</td></tr>
         </tbody>
       </table>
+    </div>
+  </section>
+
+  <section class="block" id="specs">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>Specs</h2>
+        <p>One download for each system. No iLok, no account and no activation.</p>
+      </div>
+      <dl class="specs">
+        <div><dt>Formats</dt><dd>VST3 instrument on Windows, macOS and Linux. Audio Unit (AU) instrument on macOS.</dd></div>
+        <div><dt>Windows</dt><dd>Windows 10 or later, 64-bit.</dd></div>
+        <div><dt>macOS</dt><dd>macOS 10.13 or later. Runs natively on Apple Silicon and Intel.</dd></div>
+        <div><dt>Linux</dt><dd>64-bit x86 (x86-64).</dd></div>
+        <div><dt>Hosts</dt><dd>Any DAW that loads VST3 or AU instruments, such as Ableton Live, FL Studio, Cubase, Reaper, Studio One, Bitwig and Logic Pro. Not available for Pro Tools (AAX).</dd></div>
+        <div><dt>Samples</dt><dd>WAV, AIFF, FLAC or Ogg, up to 60 seconds. The sample is saved inside your DAW session (losslessly), so the session opens anywhere, even without the original file.</dd></div>
+        <div><dt>Pads</dt><dd>16, on MIDI notes C1 to D#2, with velocity. Up to 24 notes at once.</dd></div>
+        <div><dt>MIDI out</dt><dd>Drag any Flip pattern into your DAW as a standard MIDI file, at your project&#x27;s tempo and swing.</dd></div>
+        <div><dt>Latency</dt><dd>None.</dd></div>
+        <div><dt>Channels</dt><dd>Stereo out. Mono samples play in both channels.</dd></div>
+      </dl>
     </div>
   </section>
 
@@ -171,28 +217,40 @@
       </div>
       <div class="faq">
         <div>
-          <h3>When is Splinter out?</h3>
-          <p>It&#x27;s being built now. When it&#x27;s ready, the download will be on this page.</p>
+          <h3>How do I install it?</h3>
+          <p>Unzip the download and copy <code>Splinter.vst3</code> into your VST3 folder: <code>C:\Program Files\Common Files\VST3</code> on Windows or <code>~/Library/Audio/Plug-Ins/VST3</code> on a Mac. Logic users also copy <code>Splinter.component</code> into <code>~/Library/Audio/Plug-Ins/Components</code>. Then rescan plugins in your DAW and load Splinter on an instrument (MIDI) track. The zip includes these steps in <code>INSTALL.txt</code>.</p>
         </div>
         <div>
-          <h3>How much will it cost?</h3>
-          <p>The price will be announced at launch.</p>
+          <h3>How many computers can I use it on?</h3>
+          <p>All the computers you personally own or use. See the <a href="../licence.html">licence agreement</a> for the details.</p>
+        </div>
+        <div>
+          <h3>Can I use it on commercial releases?</h3>
+          <p>Yes. The music you make with Splinter, including the patterns Flip writes, is entirely yours, with no royalties or credits owed. You still need the rights to the samples you load into it.</p>
+        </div>
+        <div>
+          <h3>Do updates cost anything?</h3>
+          <p>No. Updates to Splinter version 1 are free for everyone who bought it.</p>
+        </div>
+        <div>
+          <h3>What if it doesn't work on my system?</h3>
+          <p>Get in touch within 14 days of buying. If we can&#x27;t get it working, you get a full refund. See the <a href="../refunds.html">refund policy</a>.</p>
+        </div>
+        <div>
+          <h3>Does it work in Pro Tools?</h3>
+          <p>Not yet. Pro Tools only loads AAX plugins, and Splinter is VST3 and AU.</p>
         </div>
         <div>
           <h3>Will it work with my MIDI controller?</h3>
           <p>Yes. The 16 pads sit on MIDI notes C1 to D#2, where most pad controllers start, and they respond to velocity. Any controller or keyboard your DAW can see will play them, and you can click the pads with a mouse too.</p>
         </div>
         <div>
-          <h3>Which DAWs will it run in?</h3>
-          <p>Any DAW that loads VST3 or AU instruments, such as Ableton Live, FL Studio, Cubase, Reaper, Studio One, Bitwig and Logic Pro, on Windows, macOS and Linux.</p>
+          <h3>Does it come with sounds?</h3>
+          <p>No. Splinter is made for flipping your own samples: drag in any WAV, AIFF, FLAC or Ogg file up to 60 seconds long, or click the Kit button to pick one.</p>
         </div>
         <div>
-          <h3>Do I need my own samples?</h3>
-          <p>No. It will come with factory kits to start from, and you can drop in your own samples whenever you like.</p>
-        </div>
-        <div>
-          <h3>Is Flip&#x27;s MIDI mine to use?</h3>
-          <p>Yes. Patterns you make with Flip, and the music you make with Splinter, are entirely yours.</p>
+          <h3>Do I need to keep my sample file?</h3>
+          <p>No. Splinter saves the sample inside your DAW session, along with its chops, your pad settings and your flips, so the session opens the same on another computer.</p>
         </div>
       </div>
     </div>
@@ -202,9 +260,9 @@
     <div class="wrap">
       <div>
         <h2>Splinter</h2>
-        <p>A sampler for producers. Coming soon for Windows, macOS and Linux.</p>
+        <p>VST3 &amp; AU instrument for Windows, macOS and Linux. Instant download.</p>
       </div>
-      <a class="btn btn-primary" data-buy="splinter" href="#features"><span data-buy-label>Coming soon</span></a>
+      <a class="btn btn-primary" data-buy="splinter" href="#buy"><span data-buy-label>Buy Splinter</span><span data-price="splinter" hidden></span></a>
     </div>
   </section>
 </main>
