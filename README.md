@@ -200,8 +200,8 @@ An instrument: MIDI in (pads 1-16 on notes C1 to D#2, with velocity), stereo out
 
 ## Getting the plugins
 
-### Option A: download a release
-Open the repository's **Releases** page. Each release has a zip per plugin per system, plus a zip per bundle per system: `LBAudio-Core5-Bundle-…` (Squeeze, Carve, Ember, Haze, Ceiling), `LBAudio-FX5-Bundle-…` (Drift, Hush, Spread, Snap, Orbit) and `LBAudio-Complete-Bundle-…` (the core 5 and the FX 5). Halation and Splinter are sold on their own, in no bundle. Each bundle's contents are listed in `packaging/bundles/`. Installation steps are listed under each release and in the `INSTALL.txt` inside every zip.
+### Option A: buy them
+The plugins are sold at [LBAudio.co.uk](https://lbaudio.co.uk) (through Payhip). Each comes as a zip per system, and there's a zip per bundle per system: `LBAudio-Core5-Bundle-…` (Squeeze, Carve, Ember, Haze, Ceiling), `LBAudio-FX5-Bundle-…` (Drift, Hush, Spread, Snap, Orbit) and `LBAudio-Complete-Bundle-…` (the core 5 and the FX 5). Halation and Splinter are sold on their own, in no bundle. Each bundle's contents are listed in `packaging/bundles/`. Installation steps are in the `INSTALL.txt` inside every zip.
 
 ### Option B: build them yourself
 You need **CMake 3.22+**, **Git** and a C++17 compiler:
@@ -233,10 +233,10 @@ Options for the first command:
 ## Publishing a new release
 
 Create a release on GitHub (**Releases → Draft a new release**), type a new tag such as `v1.1.0`, and publish it.
-About 40 minutes later, the zips are attached to it automatically: each plugin for Windows, macOS and Linux, plus the three bundles for each system.
+About 40 minutes later the zips are ready (each plugin for Windows, macOS and Linux, plus the three bundles for each system), but **not on that release**: they go to a separate *draft* release called **Files for v1.1.0 (private)**. Drafts are only visible to people with write access to the repo, so the zips stay private even though the repo is public. Open it from the **Releases** page while signed in, download the zips, and upload each one to its product on Payhip (Payhip → the product → Edit → replace the file). Don't publish that draft, or the zips become free downloads.
 The tag's number becomes the version every plugin shows in your DAW, so use the `vMAJOR.MINOR.PATCH` format.
 
-Every push to `main` builds the plugins on Linux and runs all the tests and pluginval (see the **Actions** tab). The Windows and Mac builds only run for release tags, or when you start the workflow by hand (**Actions → Build plugins → Run workflow**), which keeps GitHub Actions minutes low. A hand-started run puts the zips in that run's *Artifacts* section.
+Every push to `main` builds the plugins on Linux and runs all the tests and pluginval (see the **Actions** tab). The Windows and Mac builds only run for release tags, or when you start the workflow by hand (**Actions → Build plugins → Run workflow**), which keeps GitHub Actions minutes low. A hand-started run puts its zips in a private draft too ("Files for dev-abc1234 (private)", or for the version you type).
 
 ## Installing
 

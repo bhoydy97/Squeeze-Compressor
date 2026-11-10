@@ -3,9 +3,13 @@ name: Build plugins
 # Every push to main: a Linux build of all the plugins, then their test suites and pluginval.
 # A version tag (such as v1.1.0, including one made by publishing a release on GitHub), or
 # running this workflow by hand (Actions > Build plugins > Run workflow), also builds for
-# Windows, macOS and Linux and packages the zips: one per plugin per system, plus the bundle.
-# Tag builds attach those zips to the GitHub release. A hand-started run attaches them to an
-# existing release too if you type its tag (e.g. v1.1.0) in "Release tag".
+# Windows, macOS and Linux and packages the zips: one per plugin per system, plus the bundles.
+#
+# The zips are for paying customers, so they never go anywhere public: not on the public
+# release, and not as workflow artifacts (anyone signed in to GitHub can download those from a
+# public repo). Each build uploads them to a DRAFT release named "Files for <version> (private)",
+# which only people with write access to the repo can see. Download them from there (Releases
+# page) and upload them to Payhip.
 
 on:
   push:
@@ -15,7 +19,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "Release tag to attach the zips to (e.g. v1.1.0). Leave empty for a test build."
+        description: "Version to build (e.g. v1.1.0): sets the version the DAW shows and names the private draft. Leave empty for a test build."
         required: false
         default: ""
 
@@ -98,11 +102,38 @@ jobs:
           retention-days: 14
           if-no-files-found: ignore
 
+  draft:
+    name: Private draft for the zips
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      id: ${{ steps.draft.outputs.id }}
+    steps:
+      - name: Find or make the draft
+        id: draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          label="${RELEASE_TAG:-dev-${GITHUB_SHA::7}}"
+          name="Files for $label (private)"
+          id=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq ".[] | select(.draft and .name == \"$name\") | .id" | head -n1)
+          if [ -z "$id" ]; then
+            id=$(gh api "repos/$GITHUB_REPOSITORY/releases" -f tag_name="$label-files" -f name="$name" -F draft=true \
+                   -f body="The zips for $label, for uploading to Payhip. This is a draft: only people with write access to the repo can see it. Don't publish it, or the zips become free downloads." --jq .id)
+          fi
+          echo "Draft release $id: $name"
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+
   build:
     name: ${{ matrix.name }}
     if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
-    needs: test
+    needs: [test, draft]
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
     strategy:
       fail-fast: false
       matrix:
@@ -160,16 +191,17 @@ jobs:
           if [[ -n "$RELEASE_TAG" ]]; then label="$RELEASE_TAG"; else label="dev-${GITHUB_SHA::7}"; fi
           .github/scripts/package.sh "$label"
 
-      - name: Upload zips
-        uses: actions/upload-artifact@v6
-        with:
-          name: LBAudio-${{ matrix.name }}
-          path: dist/*.zip
-          if-no-files-found: error
+      - name: Upload the zips to the private draft
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DRAFT_ID: ${{ needs.draft.outputs.id }}
+        run: .github/scripts/upload-private.sh dist/*.zip
 
   release:
-    name: Publish release
-    if: startsWith(github.ref, 'refs/tags/v') || inputs.release_tag != ''
+    name: Release notes
+    # A tag pushed without a release made on GitHub gets one, with notes and no files
+    if: startsWith(github.ref, 'refs/tags/v')
     needs: build
     runs-on: ubuntu-latest
     permissions:
@@ -177,21 +209,10 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: actions/download-artifact@v7
-        with:
-          pattern: LBAudio-*
-          path: dist
-          merge-multiple: true
-
-      - name: Create or update the GitHub release
+      - name: Make sure the public release exists (no files on it)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          ls -la dist
-          if gh release view "$RELEASE_TAG" -R "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
-            # Release was created by hand on GitHub: just attach the files
-            gh release upload "$RELEASE_TAG" dist/*.zip --clobber -R "$GITHUB_REPOSITORY"
-          else
-            gh release create "$RELEASE_TAG" dist/*.zip -R "$GITHUB_REPOSITORY" \
-              --title "LBAudio $RELEASE_TAG" --notes-file .github/release-notes.md
+          if ! gh release view "$RELEASE_TAG" -R "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" -R "$GITHUB_REPOSITORY" --title "LBAudio $RELEASE_TAG" --notes-file .github/release-notes.md
           fi
