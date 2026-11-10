@@ -114,6 +114,7 @@ bool SplinterAudioProcessor::loadSample (const juce::AudioBuffer<float>& audio, 
     else d->key = splinter::detectKey (d->sample);
     std::atomic_store (&sample, std::shared_ptr<const SampleData> (d));
     taps = { d->soundStart };
+    tapUndo.clear(); tapRedo.clear();   // a new sample starts a new history
     {
         const juce::SpinLock::ScopedLockType l (flipLock);
         history.clear(); historyIndex = -1; locked.clear();
@@ -143,27 +144,54 @@ splinter::ChopMode SplinterAudioProcessor::chopMode() const { return (splinter::
 std::shared_ptr<const ChopSet> SplinterAudioProcessor::chopsFor (splinter::ChopMode m) const { return std::atomic_load (&chopSets[(int) m]); }
 std::shared_ptr<const ChopSet> SplinterAudioProcessor::chops() const { return chopsFor (chopMode()); }
 
+void SplinterAudioProcessor::setTaps (std::vector<int> t)
+{
+    if (t == taps) return;
+    tapUndo.push_back (taps);
+    if (tapUndo.size() > maxTapUndo) tapUndo.erase (tapUndo.begin());
+    tapRedo.clear();
+    taps = std::move (t);
+    rebuildChops();
+}
+
 void SplinterAudioProcessor::addTap (int pos)
 {
     auto d = sampleData();
     if (d == nullptr || (int) taps.size() >= splinter::numPads) return;
     pos = juce::jlimit (d->soundStart, d->soundEnd - 1, pos);
     for (int t : taps) if (std::abs (t - pos) < (int) (0.05 * d->sample.rate)) return;
-    taps.push_back (pos); std::sort (taps.begin(), taps.end());
-    rebuildChops();
+    auto t = taps; t.push_back (pos); std::sort (t.begin(), t.end());
+    setTaps (std::move (t));
 }
 
 void SplinterAudioProcessor::removeTapNear (int pos)
 {
     auto d = sampleData();
     if (d == nullptr || taps.size() <= 1) return;
-    auto it = std::min_element (taps.begin() + 1, taps.end(), [pos] (int a, int b) { return std::abs (a - pos) < std::abs (b - pos); });
-    if (it != taps.end() && std::abs (*it - pos) < (int) (0.05 * d->sample.rate)) { taps.erase (it); rebuildChops(); }
+    auto t = taps;
+    auto it = std::min_element (t.begin() + 1, t.end(), [pos] (int a, int b) { return std::abs (a - pos) < std::abs (b - pos); });
+    if (it != t.end() && std::abs (*it - pos) < (int) (0.05 * d->sample.rate)) { t.erase (it); setTaps (std::move (t)); }
 }
 
 void SplinterAudioProcessor::clearTaps()
 {
-    if (auto d = sampleData()) { taps = { d->soundStart }; rebuildChops(); }
+    if (auto d = sampleData()) setTaps ({ d->soundStart });
+}
+
+void SplinterAudioProcessor::undoTaps()
+{
+    if (tapUndo.empty() || sampleData() == nullptr) return;
+    tapRedo.push_back (taps);
+    taps = std::move (tapUndo.back()); tapUndo.pop_back();
+    rebuildChops();
+}
+
+void SplinterAudioProcessor::redoTaps()
+{
+    if (tapRedo.empty() || sampleData() == nullptr) return;
+    tapUndo.push_back (taps);
+    taps = std::move (tapRedo.back()); tapRedo.pop_back();
+    rebuildChops();
 }
 
 void SplinterAudioProcessor::previewSample (bool on) { previewRequest.store (on ? 1 : 2); }

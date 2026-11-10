@@ -187,14 +187,25 @@ void Pill::paint (juce::Graphics& g)
 
 void RoundButton::paint (juce::Graphics& g)
 {
+    const float alpha = enabled && ! enabled() ? 0.35f : 1.0f;
     auto r = getLocalBounds().toFloat().reduced (0.5f);
-    g.setColour (line2); g.drawEllipse (r, 1.0f);
+    g.setColour (line2.withMultipliedAlpha (alpha)); g.drawEllipse (r, 1.0f);
     const auto c = r.getCentre(); const float u = r.getWidth() * 0.12f;
     juce::Path p;
     if (symbol == "<") { p.startNewSubPath (c.x + u * 0.6f, c.y - u * 1.2f); p.lineTo (c.x - u * 0.6f, c.y); p.lineTo (c.x + u * 0.6f, c.y + u * 1.2f); }
     else if (symbol == ">") { p.startNewSubPath (c.x - u * 0.6f, c.y - u * 1.2f); p.lineTo (c.x + u * 0.6f, c.y); p.lineTo (c.x - u * 0.6f, c.y + u * 1.2f); }
+    else if (symbol == "undo" || symbol == "redo")
+    {
+        // a hooked arrow: a curve over the top, its head pointing back (undo) or on (redo)
+        const float k = symbol == "undo" ? 1.0f : -1.0f;
+        p.startNewSubPath (c.x + k * u * 1.6f, c.y + u * 1.3f);
+        p.cubicTo (c.x + k * u * 1.9f, c.y - u * 0.6f, c.x - k * u * 0.2f, c.y - u * 1.5f, c.x - k * u * 1.5f, c.y - u * 0.2f);
+        p.startNewSubPath (c.x - k * u * 1.6f, c.y - u * 1.4f);
+        p.lineTo (c.x - k * u * 1.5f, c.y - u * 0.2f);
+        p.lineTo (c.x - k * u * 0.3f, c.y - u * 0.15f);
+    }
     else { p.startNewSubPath (c.x - u, c.y - u); p.lineTo (c.x + u, c.y + u); p.startNewSubPath (c.x + u, c.y - u); p.lineTo (c.x - u, c.y + u); }
-    g.setColour (text); g.strokePath (p, juce::PathStrokeType (1.6f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    g.setColour (text.withMultipliedAlpha (alpha)); g.strokePath (p, juce::PathStrokeType (1.6f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
 }
 
 float FlipButton::press() const
@@ -263,8 +274,14 @@ WaveView::WaveView (SplinterAudioProcessorEditor& e) : ed (e)
     play.text = [this] { return ed.proc.isPreviewing() ? juce::String ("Stop") : juce::String ("Play and tap"); };
     play.on = [this] { return ed.proc.isPreviewing(); };
     play.onClick = [this] { ed.proc.previewSample (! ed.proc.isPreviewing()); };
+    undo.enabled = [this] { return ed.proc.canUndoTaps(); };
+    undo.onClick = [this] { ed.undoChop(); };
+    redo.enabled = [this] { return ed.proc.canRedoTaps(); };
+    redo.onClick = [this] { ed.redoChop(); };
     addAndMakeVisible (mode);
     addChildComponent (play);
+    addChildComponent (undo);
+    addChildComponent (redo);
 }
 
 void WaveView::resized()
@@ -275,6 +292,10 @@ void WaveView::resized()
     mode.setBounds (head.removeFromRight (180).withSizeKeepingCentre (180, 32));
     head.removeFromRight (52);                       // "CHOP"
     play.setBounds (head.removeFromRight (112).withSizeKeepingCentre (112, 28));
+    head.removeFromRight (10);
+    redo.setBounds (head.removeFromRight (28).withSizeKeepingCentre (28, 28));
+    head.removeFromRight (6);
+    undo.setBounds (head.removeFromRight (28).withSizeKeepingCentre (28, 28));
     waveArea = r.reduced (1, 0).withTrimmedBottom (1);
 }
 
@@ -329,7 +350,8 @@ void WaveView::paint (juce::Graphics& g)
 
     auto d = ed.proc.sampleData();
     auto cs = ed.proc.chops();
-    play.setVisible (ed.proc.chopMode() == splinter::ChopMode::Tap && d != nullptr);
+    const bool tapping = ed.proc.chopMode() == splinter::ChopMode::Tap && d != nullptr;
+    play.setVisible (tapping); undo.setVisible (tapping); redo.setVisible (tapping);
     // the header row: the file, its tempo and key, how it's chopped
     auto head = juce::Rectangle<float> (14, 0, r.getWidth() - 28, 44);
     if (d == nullptr)
@@ -411,7 +433,14 @@ void WaveView::paint (juce::Graphics& g)
     if (ed.proc.chopMode() == splinter::ChopMode::Tap)
     {
         g.setColour (muted.withAlpha (0.9f)); g.setFont (sans (11.0f));
-        g.drawText ("Tap the pads as it plays, or click to place a chop · right-click removes one", wa.reduced (10, 6), juce::Justification::bottomRight, false);
+       #if JUCE_MAC
+        const juce::String undoKey ("Cmd+Z");
+       #else
+        const juce::String undoKey ("Ctrl+Z");
+       #endif
+        g.drawText (juce::String (juce::CharPointer_UTF8 ("Tap the pads as it plays, or click to place a chop \xc2\xb7 right-click removes one \xc2\xb7 "))
+                        + undoKey + " undoes",
+                    wa.reduced (10, 6), juce::Justification::bottomRight, false);
     }
 }
 
@@ -670,6 +699,7 @@ void FlipWindow::mouseDown (const juce::MouseEvent& e)
 SplinterAudioProcessorEditor::SplinterAudioProcessorEditor (SplinterAudioProcessor& p) : AudioProcessorEditor (&p), proc (p)
 {
     setLookAndFeel (&look);
+    setWantsKeyboardFocus (true);   // for undo and redo; keys it doesn't use go back to the host
     repeat.selected = [this] { return juce::roundToInt (paramValue (proc, ids::noteRepeat)) - 1; };
     repeat.onPick = [this] (int i) { const int cur = juce::roundToInt (paramValue (proc, ids::noteRepeat)); setParam (proc, ids::noteRepeat, cur == i + 1 ? 0.0f : (float) (i + 1)); };
     repeat.accentWhen = [this] { return proc.repeating.load(); };
@@ -765,7 +795,7 @@ std::vector<std::pair<juce::String, juce::Rectangle<int>>> SplinterAudioProcesso
     auto add = [&] (const juce::String& n, const juce::Component& c) { out.push_back ({ n, getLocalArea (&c, c.getLocalBounds()) }); };
     out.push_back ({ "kit", kitArea }); out.push_back ({ "swing", swingArea });
     out.push_back ({ "padPanel", padPanel }); out.push_back ({ "editPanel", editPanel }); out.push_back ({ "flipPanel", flipPanel });
-    add ("repeat", repeat); add ("wave", wave); add ("mode", wave.mode); add ("play", wave.play);
+    add ("repeat", repeat); add ("wave", wave); add ("mode", wave.mode); add ("play", wave.play); add ("undo", wave.undo); add ("redo", wave.redo);
     out.push_back ({ "waveArea", wave.waveArea + wave.getPosition() });
     for (int i = 0; i < (int) pads.size(); ++i) add ("pad" + juce::String (i + 1), *pads[(size_t) i]);
     add ("era", era);
@@ -792,6 +822,21 @@ void SplinterAudioProcessorEditor::filesDropped (const juce::StringArray& files,
 {
     for (auto& f : files)
         if (proc.loadSample (juce::File (f))) { attachPad (selected()); repaint(); break; }
+}
+
+void SplinterAudioProcessorEditor::undoChop() { proc.undoTaps(); wave.repaint(); for (auto& p : pads) p->repaint(); }
+void SplinterAudioProcessorEditor::redoChop() { proc.redoTaps(); wave.repaint(); for (auto& p : pads) p->repaint(); }
+
+bool SplinterAudioProcessorEditor::keyPressed (const juce::KeyPress& k)
+{
+    // Only in Tap mode, where there are chops of your own to take back. There, Cmd/Ctrl+Z is always ours (even
+    // with nothing left to undo), so one press too many doesn't undo something in the DAW instead.
+    if (proc.chopMode() != splinter::ChopMode::Tap || ! k.getModifiers().isCommandDown()) return false;
+    const int c = k.getKeyCode();
+    const bool z = c == 'Z' || c == 'z', y = c == 'Y' || c == 'y';
+    if (z && ! k.getModifiers().isShiftDown()) { undoChop(); return true; }
+    if ((z && k.getModifiers().isShiftDown()) || y) { redoChop(); return true; }
+    return false;
 }
 
 void SplinterAudioProcessorEditor::refreshFromProcessor()

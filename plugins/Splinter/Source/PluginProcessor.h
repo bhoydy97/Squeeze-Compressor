@@ -86,6 +86,11 @@ public:
     void addTap (int samplePos);                              // Tap mode: a chop where you tap
     void removeTapNear (int samplePos);
     void clearTaps();
+    // Tap mode's chops can be undone and redone, step by step, back to when the sample was loaded
+    bool canUndoTaps() const { return ! tapUndo.empty(); }
+    bool canRedoTaps() const { return ! tapRedo.empty(); }
+    void undoTaps();
+    void redoTaps();
     void previewSample (bool on);                             // play the whole sound, to tap along to
     bool isPreviewing() const { return previewOn.load(); }
     double previewPosition() const { return previewPos.load(); }   // in samples of the sample, -1 when not playing
@@ -122,12 +127,15 @@ public:
 
 private:
     void rebuildChops();
+    void setTaps (std::vector<int> t);                        // keeps the old ones for undo
     void triggerPad (int pad, float vel, const ChopSet& cs, const std::array<splinter::PadSettings, splinter::numPads>& all);
     void setPattern (std::shared_ptr<const splinter::Pattern> p);
 
     std::shared_ptr<const SampleData> sample;
     std::shared_ptr<const ChopSet> chopSets[3];
     std::vector<int> taps;
+    std::vector<std::vector<int>> tapUndo, tapRedo;
+    static constexpr size_t maxTapUndo = 200;
     juce::File lastFile;
     mutable juce::SpinLock flipLock;
     std::vector<std::shared_ptr<const splinter::Pattern>> history;

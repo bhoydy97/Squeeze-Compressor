@@ -68,13 +68,15 @@ public:
     void mouseUp (const juce::MouseEvent& e) override { if (e.mouseWasClicked() && onClick) onClick(); }
 };
 
+// A small round button with a symbol: "<", ">", "x", "undo" or "redo". Dimmed, and deaf to clicks, while enabled() says no.
 class RoundButton final : public juce::Component
 {
 public:
     explicit RoundButton (juce::String s) : symbol (std::move (s)) {}
     std::function<void()> onClick;
+    std::function<bool()> enabled;
     void paint (juce::Graphics&) override;
-    void mouseUp (const juce::MouseEvent& e) override { if (e.mouseWasClicked() && onClick) onClick(); }
+    void mouseUp (const juce::MouseEvent& e) override { if (e.mouseWasClicked() && onClick && (! enabled || enabled())) onClick(); }
 private:
     juce::String symbol;
 };
@@ -120,6 +122,7 @@ public:
     juce::Rectangle<int> waveArea;
     Seg mode { { "On the hits", "Even", "Tap" } };
     Pill play;
+    RoundButton undo { "undo" }, redo { "redo" };   // Tap mode: take back a chop, or put it back
 private:
     int xToSample (float x) const;
     float sampleToX (double s) const;
@@ -189,6 +192,9 @@ public:
     bool isInterestedInFileDrag (const juce::StringArray&) override { return true; }
     void filesDropped (const juce::StringArray& files, int, int) override;
     void mouseDown (const juce::MouseEvent&) override;
+    bool keyPressed (const juce::KeyPress&) override;   // Cmd/Ctrl+Z and Shift+Cmd/Ctrl+Z (or Ctrl+Y) in Tap mode
+    void undoChop();                                    // as the undo and redo buttons do
+    void redoChop();
 
     // Shared with the parts of the window
     SplinterAudioProcessor& proc;

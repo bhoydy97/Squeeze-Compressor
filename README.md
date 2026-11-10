@@ -183,7 +183,7 @@ An instrument: MIDI in (pads 1-16 on notes C1 to D#2, with velocity), stereo out
 
 | Control | Range | What it does |
 |---|---|---|
-| Chop Mode | On the hits, Even, Tap | Cut wherever a new sound starts (spectral-flux onsets, up to 16), into 16 equal slices, or where you tap a pad while the sample plays (right-click the waveform to remove a cut) |
+| Chop Mode | On the hits, Even, Tap | Cut wherever a new sound starts (spectral-flux onsets, up to 16), into 16 equal slices, or where you tap a pad while the sample plays (right-click the waveform to remove a cut; the arrows by Play and tap, or Cmd/Ctrl+Z and Shift+Cmd/Ctrl+Z, undo and redo your taps) |
 | Pitch (per pad) | −24 … +24 st | Tunes the pad's chop |
 | Start / End (per pad) | 0 … 100 % | Where in the chop it starts and stops (shown in ms) |
 | Attack / Release (per pad) | 0 … 500 ms / 5 ms … 2 s | Fade in; fade out after the note ends (gate mode) |
@@ -273,7 +273,7 @@ Each plugin has a test tool that loads the built VST3 the way a DAW does, then r
 - **Spread:** neutral passthrough, width 0/200 %, bass mono (low side removed, highs and centred bass untouched), mono check, balance law, correlation meter
 - **Snap:** bit-exact when neutral, steady tones untouched, attack shapes fronts not tails, sustain shapes tails not fronts, level independence, mix
 - **Orbit:** bit-exact dry mix, a still voice is an exact delay, depth spreads a pure tone, width 0 stays mono, level with 1-4 voices, tone filter against its maths, stability at 70 % feedback
-- **Splinter:** an instrument (MIDI in, stereo out), each pad plays its own chop at its velocity, pitch, reverse, start and end, one-shot and gate, choke groups, filter and resonance, drive, each Era, volume, note repeat at every rate and with swing, Flip playing in time with the host (and quiet when it stops), chopping on the hits and evenly, tapped chops, tempo and key from the name and from the audio, Flip's length, busyness, locked rows and history, the MIDI it drags out, and the sample saved in the session
+- **Splinter:** an instrument (MIDI in, stereo out), each pad plays its own chop at its velocity, pitch, reverse, start and end, one-shot and gate, choke groups, filter and resonance, drive, each Era, volume, note repeat at every rate and with swing, Flip playing in time with the host (and quiet when it stops), chopping on the hits and evenly, tapped chops and their undo and redo, tempo and key from the name and from the audio, Flip's length, busyness, locked rows and history, the MIDI it drags out, and the sample saved in the session
 - **Halation:** oversampling latency, the bands sum flat, Mix blends in phase, band isolation, each band's compressor against its maths, exciter harmonics made from their own band only, the same at any level and not aliased, each tone's character and level, Excite Mix and Amount, changing tone without a click, solo and bypass, input/output, crossed splits kept in order, every factory preset loads and stays sane, state recall, user presets
 
 All of them also pass [pluginval](https://github.com/Tracktion/pluginval) at strictness level 10.

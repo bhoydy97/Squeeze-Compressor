@@ -395,6 +395,24 @@ void runSuite (juce::AudioProcessor& p)
         check (sp->chops()->size() == 3 && sp->chops()->points[1] == (int) (0.8 * kitRate), "Tap: a chop where you tap (taps too close together count once)", juce::String (sp->chops()->size()));
         sp->removeTapNear ((int) (1.61 * kitRate));
         check (sp->chops()->size() == 2, "Tap: right-click takes one away", juce::String (sp->chops()->size()));
+        // undo and redo, step by step
+        sp->undoTaps();
+        const bool backTo3 = sp->chops()->size() == 3 && sp->chops()->points[2] == (int) (1.6 * kitRate);
+        sp->undoTaps();
+        const bool backTo2 = sp->chops()->size() == 2 && sp->chops()->points[1] == (int) (0.8 * kitRate);
+        sp->undoTaps(); sp->undoTaps(); sp->undoTaps();   // past the start: stays at the start
+        const bool atStart = sp->chops()->size() == 1 && ! sp->canUndoTaps() && sp->canRedoTaps();
+        check (backTo3 && backTo2 && atStart, "Tap: undo takes chops back one at a time, to where you started",
+               juce::String (backTo3 ? "" : "remove not undone ") + (backTo2 ? "" : "tap not undone ") + (atStart ? "" : "didn't stop at the start"));
+        sp->redoTaps(); sp->redoTaps();
+        const bool redone = sp->chops()->size() == 3;
+        sp->redoTaps();
+        const bool redone2 = sp->chops()->size() == 2 && ! sp->canRedoTaps();
+        check (redone && redone2, "Tap: redo puts them back", juce::String (sp->chops()->size()));
+        sp->undoTaps(); sp->addTap ((int) (2.4 * kitRate));
+        check (! sp->canRedoTaps() && sp->chops()->size() == 4, "Tap: a new chop after undo starts a new branch (nothing left to redo)", juce::String (sp->chops()->size()));
+        sp->clearTaps(); sp->undoTaps();
+        check (sp->chops()->size() == 4, "Tap: clearing can be undone too", juce::String (sp->chops()->size()));
         x.setChoice ("Chop Mode", 0); x.apply();
     }
     // Tempo and key, heard (no hints in the name)
@@ -496,6 +514,21 @@ void runSuite (juce::AudioProcessor& p)
         check (sp->flipCount() > 0, "The FLIP button flips", "");
         ed.setFlipWindowOpen (true);
         check (ed.flipWindowOpen(), "Clicking the lanes opens the Flip window", "");
+        ed.setFlipWindowOpen (false);
+        // Cmd/Ctrl+Z and Shift+Cmd/Ctrl+Z in Tap mode; in the other modes the keys go back to the host
+        const juce::KeyPress undoKey ('z', juce::ModifierKeys::commandModifier, 0), redoKey ('z', juce::ModifierKeys::commandModifier | juce::ModifierKeys::shiftModifier, 0);
+        const bool othersPassed = ! ed.keyPressed (undoKey);
+        Harness x (p); x.setChoice ("Chop Mode", 2); x.apply();
+        const int before = sp->chops()->size();
+        sp->addTap ((int) (2.0 * kitRate));
+        const bool added = sp->chops()->size() == before + 1;
+        const bool undone = ed.keyPressed (undoKey) && sp->chops()->size() == before;
+        const bool redone = ed.keyPressed (redoKey) && sp->chops()->size() == before + 1;
+        const bool plainZ = ! ed.keyPressed (juce::KeyPress ('z'));
+        check (added && othersPassed && undone && redone && plainZ, "Cmd/Ctrl+Z undoes a chop in Tap mode, Shift redoes it; other keys go to the host",
+               juce::String (added ? "" : "the tap didn't land ") + (othersPassed ? "" : "kept the key outside Tap mode ") + (undone ? "" : "no undo ")
+               + (redone ? "" : "no redo ") + (plainZ ? "" : "kept a plain Z"));
+        x.setChoice ("Chop Mode", 0); x.apply();
     }
 }
 
