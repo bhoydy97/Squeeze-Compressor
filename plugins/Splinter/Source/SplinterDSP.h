@@ -458,6 +458,13 @@ struct Biquad
     double b0 = 1, b1 = 0, b2 = 0, a1 = 0, a2 = 0, z1 = 0, z2 = 0;
     void lowPass (double fc, double q, double fs) { set (fc, q, fs, false); }
     void highPass (double fc, double q, double fs) { set (fc, q, fs, true); }
+    void peak (double fc, double q, double gainDb, double fs)   // a bell, boosting or cutting around fc
+    {
+        fc = std::clamp (fc, 10.0, fs * 0.45);
+        const double A = std::pow (10.0, gainDb / 40.0), w = 2 * pi * fc / fs, al = std::sin (w) / (2 * q), c = std::cos (w);
+        const double a0 = 1 + al / A;
+        b0 = (1 + al * A) / a0; b1 = -2 * c / a0; b2 = (1 - al * A) / a0; a1 = -2 * c / a0; a2 = (1 - al / A) / a0;
+    }
     void set (double fc, double q, double fs, bool high)
     {
         fc = std::clamp (fc, 10.0, fs * 0.45);
@@ -493,8 +500,7 @@ struct Voice
     float s1[2] {}, s2[2] {};
     double g = 1, k = 2;
     bool filterOn = false;
-    Biquad lp1[2], lp2[2], hp[2];
-    double holdPhase = 0; float held[2] {};
+    Biquad lp1[2], lp2[2], hp[2], pk[2], pre[2], post[2];
     double lfo = 0; uint32_t noise = 22222u; float crackle[2] {}, hissZ[2] {};
 
     void start (int padIndex, const PadSettings& s, int chopStart, int chopEnd, float velocity, double srcRate, double outRate, uint64_t when)
@@ -514,10 +520,29 @@ struct Voice
         filterOn = s.cutoff < 19500.0f || s.resonance > 0.001f;
         const double fc = std::clamp ((double) s.cutoff, 20.0, outRate * 0.45);
         g = std::tan (pi * fc / outRate); k = 2.0 - 1.9 * std::clamp ((double) s.resonance, 0.0, 1.0);
-        for (int c = 0; c < 2; ++c) { s1[c] = s2[c] = 0; lp1[c].reset(); lp2[c].reset(); hp[c].reset(); held[c] = 0; crackle[c] = 0; hissZ[c] = 0; }
-        holdPhase = 1.0; lfo = 0;
-        if (s.era == Era::Vintage26k) for (int c = 0; c < 2; ++c) { lp1[c].lowPass (11000, 0.6, outRate); lp2[c].lowPass (11000, 0.6, outRate); }
-        if (s.era == Era::Dusty) for (int c = 0; c < 2; ++c) { lp1[c].lowPass (4200, 0.8, outRate); hp[c].highPass (140, 0.7, outRate); }
+        for (int c = 0; c < 2; ++c) { s1[c] = s2[c] = 0; lp1[c].reset(); lp2[c].reset(); hp[c].reset(); pk[c].reset(); pre[c].reset(); post[c].reset(); crackle[c] = 0; hissZ[c] = 0; }
+        lfo = 0;
+        for (int c = 0; c < 2; ++c)
+        {
+            if (s.era == Era::Grit12)
+            {
+                lp1[c].lowPass (10000, 0.6, outRate); lp2[c].lowPass (10000, 0.6, outRate);   // a 22 kHz sampler's bandwidth
+                pk[c].peak (1500, 0.6, 3.5, outRate);                                          // the mids, pushed (the crunch)
+                post[c].lowPass (9500, 0.6, outRate);                                          // its output filter
+            }
+            if (s.era == Era::Vintage26k)
+            {
+                pre[c].lowPass (12000, 0.6, outRate);                                          // a 26 kHz sampler's bandwidth
+                pk[c].peak (400, 0.8, 3.5, outRate);                                           // warmth
+                lp1[c].lowPass (6500, 0.6, outRate); lp2[c].lowPass (6500, 0.6, outRate);      // a round, soft top
+                hp[c].highPass (20, 0.7, outRate);                                             // no DC from the saturation
+            }
+            if (s.era == Era::Dusty)
+            {
+                lp1[c].lowPass (3000, 0.7, outRate); lp2[c].lowPass (4200, 0.6, outRate);      // muffled
+                hp[c].highPass (170, 0.7, outRate);                                            // thin
+            }
+        }
     }
 
     void release() { if (! ps.oneShot) releasing = true; }
@@ -530,7 +555,6 @@ struct Voice
     {
         const int len = smp.length();
         const float driveG = 1.0f + 7.0f * ps.drive, driveNorm = std::pow (driveG, -0.7f);
-        const double holdInc = 26040.0 / outRate;
         const int endFade = std::max (1, (int) (0.002 * outRate));
         for (int i = from; i < n; ++i)
         {
@@ -579,23 +603,28 @@ struct Voice
                 switch (ps.era)
                 {
                     case Era::Clean: break;
-                    case Era::Grit12:
-                        y = std::tanh (quantise (y, 0.125f, 12) * 1.1f) / 1.1f;   // unity at low level, rounding off the peaks
+                    case Era::Grit12:   // crunchy, not fizzy: the bandwidth of a 22 kHz sampler, 12 bits as if sampled a
+                    {                   // little low, the mids pushed into a soft clip, and a gentle output filter
+                        const float a = quantise (lp2[c].process (lp1[c].process (y)), 0.125f, 12);
+                        const float z = pk[c].process (a);
+                        y = post[c].process (std::tanh (2.0f * z) / 2.0f);
                         break;
-                    case Era::Vintage26k:
-                        if (c == 0) { holdPhase += holdInc; }
-                        if (holdPhase >= 1.0) { held[c] = quantise (y, 0.25f, 12); if (c == 1) holdPhase -= 1.0; }
-                        y = lp2[c].process (lp1[c].process (held[c]));
-                        y = std::tanh (y * 1.2f) / 1.2f;
+                    }
+                    case Era::Vintage26k:   // warm and round: the bandwidth of a 26 kHz sampler and 12 bits, warmth around
+                    {                       // 400 Hz, light saturation that leans one way (even harmonics), and a soft top
+                        float z = pk[c].process (quantise (pre[c].process (y), 0.25f, 12));
+                        z = std::tanh (1.1f * (z + 0.1f * z * z)) / 1.1f;
+                        y = hp[c].process (lp2[c].process (lp1[c].process (z)));
                         break;
-                    case Era::Dusty:
-                    {
-                        y = hp[c].process (lp1[c].process (y));
-                        const float h = rnd() * 0.0025f;   // a quiet hiss under it
+                    }
+                    case Era::Dusty:   // worn, like an old record: thin and muffled, with soft hiss and crackle (filtered
+                    {                  // with the music, so nothing in it is bright)
+                        const float h = rnd() * 0.005f;
                         float cr = 0.0f;
-                        if ((noise & 0xFFFF) < 14) cr = rnd() * 0.25f;
+                        if ((noise & 0xFFFF) < 20) cr = rnd() * 0.3f;
                         crackle[c] += 0.35f * (cr - crackle[c]);
-                        y = std::tanh ((y + h + crackle[c]) * 1.15f) / 1.15f;
+                        y = hp[c].process (lp2[c].process (lp1[c].process (y + h + crackle[c])));
+                        y = 1.25f * std::tanh (1.3f * y) / 1.3f;
                         break;
                     }
                 }

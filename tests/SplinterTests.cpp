@@ -278,7 +278,7 @@ void runSuite (juce::AudioProcessor& p)
             for (size_t i = at (0.005); i < at (0.1); ++i) { const double d = v[i] - clean1[i]; s += d * d; t += (double) clean1[i] * clean1[i]; }
             return (float) (10.0 * std::log10 (s / t));
         };
-        check (residue (grit) > -40 && residue (grit) < -6, "12-bit grit roughens the sound", fmt (residue (grit)) + " dB of grit");
+        check (residue (grit) > -30 && residue (grit) < -6, "12-bit grit roughens the sound, enough to hear", fmt (residue (grit)) + " dB of grit");
         check (std::abs (rmsDb (grit, 0, at (0.1)) - rmsDb (clean1, 0, at (0.1))) < 1.5f, "...at about the same level", fmt (rmsDb (grit, 0, at (0.1)) - rmsDb (clean1, 0, at (0.1))) + " dB");
         const auto vin = withEra (2, 8), dusty = withEra (3, 8);
         const float v12k = toneDb (vin, at (0.005), at (0.05), 12000), d12k = toneDb (dusty, at (0.005), at (0.05), 12000);

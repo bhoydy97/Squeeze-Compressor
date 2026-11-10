@@ -189,7 +189,7 @@ An instrument: MIDI in (pads 1-16 on notes C1 to D#2, with velocity), stereo out
 | Attack / Release (per pad) | 0 … 500 ms / 5 ms … 2 s | Fade in; fade out after the note ends (gate mode) |
 | Filter / Resonance (per pad) | 60 Hz … 20 kHz / 0 … 100 % | State-variable low-pass |
 | Drive (per pad) | 0 … 100 % | Saturation |
-| Era (per pad) | Clean, 12-bit grit, Vintage 26k, Dusty | 12-bit quantising; 26.04 kHz sample-and-hold at 12 bits with soft filtering; dark band-limiting with wow, flutter, hiss and crackle |
+| Era (per pad) | Clean, 12-bit grit, Vintage 26k, Dusty | 12-bit grit: a 22 kHz sampler's bandwidth, coarse 12-bit, the mids pushed into a soft clip and a gentle output filter (crunchy, not fizzy); Vintage 26k: a 26 kHz sampler's bandwidth at 12 bits, warmth around 400 Hz, light even-harmonic saturation and a soft top; Dusty: thin and muffled, with wow, flutter, soft hiss and crackle |
 | Reverse / One-shot / Choke (per pad) | on/off, on/off, Off or 1-4 | Play backwards; play the whole chop or only while held; pads in a group cut each other off |
 | Swing | 50 … 75 % | Every other 16th late, in note repeat, Flip and the MIDI you drag out |
 | Note Repeat | Off, 1/8, 1/16, 1/16T, 1/32 | A held pad repeats on the host's grid (or the sample's tempo when the host is stopped) |
