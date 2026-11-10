@@ -10,6 +10,10 @@ name: Build plugins
 # public repo). Each build uploads them to a DRAFT release named "Files for <version> (private)",
 # which only people with write access to the repo can see. Download them from there (Releases
 # page) and upload them to Payhip.
+#
+# To update just one plugin (or a few) in a draft, run the workflow by hand with its version and
+# the plugin names: only those are built, tested and packaged, their zips replace the old ones in
+# the draft, and every other zip there is left as it is (no bundles are made).
 
 on:
   push:
@@ -22,6 +26,10 @@ on:
         description: "Version to build (e.g. v1.1.0): sets the version the DAW shows and names the private draft. Leave empty for a test build."
         required: false
         default: ""
+      plugins:
+        description: "Only these plugins (e.g. Splinter, or Splinter,Halation): their zips replace the old ones in the draft; nothing else is rebuilt and no bundles are made. Leave empty for everything."
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -29,10 +37,13 @@ permissions:
 env:
   # The release these builds belong to: the pushed tag, or the tag typed into a hand-started run
   RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || inputs.release_tag }}
+  # Only these plugins, when a hand-started run names some (commas or semicolons between them)
+  ONLY_PLUGINS: ${{ inputs.plugins }}
 
-# A newer push to main replaces a build that's still running for an older one (saves minutes)
+# A newer push to main replaces a build that's still running for an older one (saves minutes). A run for only
+# some plugins doesn't cancel a full one.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}-${{ inputs.plugins }}
   cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
 jobs:
@@ -61,8 +72,9 @@ jobs:
 
       - name: Configure
         run: |
+          only="${ONLY_PLUGINS//,/;}"; only="${only// /}"
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DLBAUDIO_BUILD_TESTS=ON -DLBAUDIO_LTO=OFF \
-            -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache ${only:+"-DLBAUDIO_PLUGINS=$only"}
 
       # A fixed job count: unlimited parallel compiles run the runner out of memory
       - name: Build
@@ -170,6 +182,9 @@ jobs:
           fi
           # Universal binary: Apple Silicon + Intel
           if [[ "$RUNNER_OS" == "macOS" ]]; then args+=("-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64"); fi
+          # Only some plugins, when the run names them
+          only="${ONLY_PLUGINS//,/;}"; only="${only// /}"
+          if [[ -n "$only" ]]; then args+=("-DLBAUDIO_PLUGINS=$only"); fi
           cmake "${args[@]}"
 
       - name: Build

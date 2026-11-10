@@ -59,6 +59,9 @@ for name in $(tr -d '\r' < "$ROOT/build/plugins.txt"); do
 done
 
 bundles=0
+# A build of only some plugins (ONLY_PLUGINS, from a hand-started run) makes no bundles: it's for replacing those
+# plugins' own zips, and the bundles would be missing the rest
+[[ -n "${ONLY_PLUGINS:-}" ]] && { echo "Only $ONLY_PLUGINS: no bundles this time."; echo "$count plugins."; exit 0; }
 for list in "$ROOT"/packaging/bundles/*.txt; do
   bundle="$(basename "$list" .txt)"; dir="$STAGE/bundle-$bundle"; mkdir -p "$dir"; n=0
   while read -r name; do
