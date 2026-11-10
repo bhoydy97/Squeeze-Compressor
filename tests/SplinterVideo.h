@@ -11,7 +11,7 @@
 //       frames (<id>/f-00000.jpg ...), plus layout.json: where each part of the window is, for pointers and zooms.
 //
 // Script:
-//   { "fps": 30, "seconds": 66, "bpm": 90, "width": 2400,
+//   { "fps": 30, "seconds": 66, "bpm": 90, "width": 2400, ["format": "png",]
 //     "instances": [ { "id": "vox", "file": "...wav", "start": 0, "length": 4, "name": "shown name.wav" } ],
 //     "events": [ { "t": 1.5, "i": "vox", "do": "note", "pad": 0, "vel": 0.9, "len": 0.25 }, ... ],
 //     "shots": [ { "from": 0, "to": 20, "i": "vox" }, ... ] }
@@ -207,6 +207,8 @@ inline int promo (char** argv)
     }
 
     juce::JPEGImageFormat jpeg; jpeg.setQuality (0.93f);
+    juce::PNGImageFormat png;
+    const bool asPng = script.getProperty ("format", "jpg").toString() == "png";   // "png" for stills
     const float scale = (float) widthPx / (float) SplinterAudioProcessorEditor::defaultWidth;
     juce::AudioBuffer<float> block (2, spf);
     size_t next = 0;
@@ -284,10 +286,10 @@ inline int promo (char** argv)
             auto& ed = *s.in->editor;
             ed.refreshFromProcessor();
             const auto img = ed.createComponentSnapshot (ed.getLocalBounds(), true, scale);
-            auto file = outDir.getChildFile (s.in->id).getChildFile (juce::String::formatted ("f-%05d.jpg", f));
+            auto file = outDir.getChildFile (s.in->id).getChildFile (juce::String::formatted (asPng ? "f-%05d.png" : "f-%05d.jpg", f));
             file.deleteFile();
             juce::FileOutputStream os (file);
-            jpeg.writeImageToStream (img, os);
+            if (asPng) png.writeImageToStream (img, os); else jpeg.writeImageToStream (img, os);
             ++written[s.in];
         }
         if (f % (fps * 5) == 0) std::cout << "  " << juce::String (t0, 1) << " s" << std::endl;

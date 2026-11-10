@@ -329,6 +329,7 @@ void SplinterAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
     juce::ScopedNoDenormals noDenormals;
     const int n = buffer.getNumSamples();
     buffer.clear();
+    if (n <= 0) { midi.clear(); return; }
     auto d = sampleData();
     auto cs = chops();
     std::array<splinter::PadSettings, splinter::numPads> all;

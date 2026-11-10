@@ -1,6 +1,6 @@
 # LBAudio plugins
 
-Mixing, mastering and effects plugins by LBAudio, built with [JUCE 8](https://juce.com).
+Mixing, mastering and effects plugins, and a sampler, by LBAudio, built with [JUCE 8](https://juce.com).
 Each builds as **VST3** on Windows, macOS and Linux, and also as **Audio Unit** on macOS (for Logic / GarageBand).
 
 | | Plugin | What it is |
@@ -16,8 +16,9 @@ Each builds as **VST3** on Windows, macOS and Linux, and also as **Audio Unit** 
 | ![](docs/snap.png) | **Snap** | Transient shaper: level-independent attack and sustain |
 | ![](docs/orbit.png) | **Orbit** | Stereo chorus with up to four voices, shown orbiting on screen |
 | ![](docs/halation.png) | **Halation** | Four-band compressor with an exciter in every band (five tones, with a mix), factory presets and your own |
+| ![](docs/splinter.png) | **Splinter** | Sampler instrument: chops a sample on the hits across 16 pads, Eras, note repeat, and Flip patterns you drag out as MIDI |
 
-The first five share the house look; Drift, Hush, Spread, Snap, Orbit and Halation each have their own (themes in `shared/LBAudio/UI.h`).
+The first five share the house look; Drift, Hush, Spread, Snap, Orbit and Halation each have their own (themes in `shared/LBAudio/UI.h`), and so does Splinter (in its editor).
 All of them: double-click a knob to reset it; click a value to type one in (`1.2 s`, `250 ms`, `4k`, `off` all work).
 
 ## The plugins
@@ -176,10 +177,31 @@ Four bands (Low, Low Mid, High Mid, High), each with its own compressor and exci
 
 Linkwitz-Riley 24 dB/oct crossovers with all-pass compensation, so with nothing set the bands add back up to a flat response. Runs 4x oversampled so the exciters' harmonics don't alias; the latency is reported to the DAW. The preset menu has factory presets in categories (mix bus, beats, vocals, instruments, mastering) and your own: **SAVE** writes a `.halationpreset` file to `LBAudio/Halation/Presets` in your user application data folder (`~/Library/Application Support/…` on macOS, `%APPDATA%\…` on Windows, `~/.config/…` on Linux). Factory presets also show up as the DAW's programs.
 
+### Splinter (sampler)
+
+An instrument: MIDI in (pads 1-16 on notes C1 to D#2, with velocity), stereo out, no latency. Drop a sample (WAV, AIFF, FLAC or Ogg, up to 60 s) on the window or click **Kit**. Its tempo and key come from the file name (`…_92bpm_A_minor.wav`) or are worked out from the audio.
+
+| Control | Range | What it does |
+|---|---|---|
+| Chop Mode | On the hits, Even, Tap | Cut wherever a new sound starts (spectral-flux onsets, up to 16), into 16 equal slices, or where you tap a pad while the sample plays (right-click the waveform to remove a cut) |
+| Pitch (per pad) | −24 … +24 st | Tunes the pad's chop |
+| Start / End (per pad) | 0 … 100 % | Where in the chop it starts and stops (shown in ms) |
+| Attack / Release (per pad) | 0 … 500 ms / 5 ms … 2 s | Fade in; fade out after the note ends (gate mode) |
+| Filter / Resonance (per pad) | 60 Hz … 20 kHz / 0 … 100 % | State-variable low-pass |
+| Drive (per pad) | 0 … 100 % | Saturation |
+| Era (per pad) | Clean, 12-bit grit, Vintage 26k, Dusty | 12-bit quantising; 26.04 kHz sample-and-hold at 12 bits with soft filtering; dark band-limiting with wow, flutter, hiss and crackle |
+| Reverse / One-shot / Choke (per pad) | on/off, on/off, Off or 1-4 | Play backwards; play the whole chop or only while held; pads in a group cut each other off |
+| Swing | 50 … 75 % | Every other 16th late, in note repeat, Flip and the MIDI you drag out |
+| Note Repeat | Off, 1/8, 1/16, 1/16T, 1/32 | A held pad repeats on the host's grid (or the sample's tempo when the host is stopped) |
+| Flip Length / Busy / Start On Chop 1 | 1, 2, 4 bars / 0 … 100 % / on/off | Settings for new Flip patterns |
+| Volume | −24 … +6 dB | Output level |
+
+**Flip** writes a pattern from the chops (kick-like chops on the strong beats, snare-like ones on the backbeat, hats and the rest around them), which plays along while the host plays. Every flip is kept (‹ › to step through), rows can be locked so they survive the next flip, and **Drag MIDI into your DAW** drags the pattern out as a `.mid` at the host's tempo and swing. The sample is saved inside the DAW session as 24-bit FLAC, with the taps, the flips and every pad's settings.
+
 ## Getting the plugins
 
 ### Option A: download a release
-Open the repository's **Releases** page. Each release has a zip per plugin per system, plus a zip per bundle per system: `LBAudio-Core5-Bundle-…` (Squeeze, Carve, Ember, Haze, Ceiling), `LBAudio-FX5-Bundle-…` (Drift, Hush, Spread, Snap, Orbit) and `LBAudio-Complete-Bundle-…` (the core 5 and the FX 5). Halation is sold on its own, in no bundle. Each bundle's contents are listed in `packaging/bundles/`. Installation steps are listed under each release and in the `INSTALL.txt` inside every zip.
+Open the repository's **Releases** page. Each release has a zip per plugin per system, plus a zip per bundle per system: `LBAudio-Core5-Bundle-…` (Squeeze, Carve, Ember, Haze, Ceiling), `LBAudio-FX5-Bundle-…` (Drift, Hush, Spread, Snap, Orbit) and `LBAudio-Complete-Bundle-…` (the core 5 and the FX 5). Halation and Splinter are sold on their own, in no bundle. Each bundle's contents are listed in `packaging/bundles/`. Installation steps are listed under each release and in the `INSTALL.txt` inside every zip.
 
 ### Option B: build them yourself
 You need **CMake 3.22+**, **Git** and a C++17 compiler:
@@ -251,6 +273,7 @@ Each plugin has a test tool that loads the built VST3 the way a DAW does, then r
 - **Spread:** neutral passthrough, width 0/200 %, bass mono (low side removed, highs and centred bass untouched), mono check, balance law, correlation meter
 - **Snap:** bit-exact when neutral, steady tones untouched, attack shapes fronts not tails, sustain shapes tails not fronts, level independence, mix
 - **Orbit:** bit-exact dry mix, a still voice is an exact delay, depth spreads a pure tone, width 0 stays mono, level with 1-4 voices, tone filter against its maths, stability at 70 % feedback
+- **Splinter:** an instrument (MIDI in, stereo out), each pad plays its own chop at its velocity, pitch, reverse, start and end, one-shot and gate, choke groups, filter and resonance, drive, each Era, volume, note repeat at every rate and with swing, Flip playing in time with the host (and quiet when it stops), chopping on the hits and evenly, tapped chops, tempo and key from the name and from the audio, Flip's length, busyness, locked rows and history, the MIDI it drags out, and the sample saved in the session
 - **Halation:** oversampling latency, the bands sum flat, Mix blends in phase, band isolation, each band's compressor against its maths, exciter harmonics made from their own band only, the same at any level and not aliased, each tone's character and level, Excite Mix and Amount, changing tone without a click, solo and bypass, input/output, crossed splits kept in order, every factory preset loads and stays sane, state recall, user presets
 
 All of them also pass [pluginval](https://github.com/Tracktion/pluginval) at strictness level 10.
@@ -272,7 +295,7 @@ website/                 the sales site
 
 1. Copy one plugin's folder in `plugins/` and rename it and its classes.
 2. In its `CMakeLists.txt`, set the name, type, VST3 category and a **new** 4-character plugin code.
-3. Add the name to `LBAUDIO_PLUGINS` in the root `CMakeLists.txt`, and write `tests/<Name>Tests.cpp`.
+3. Add the name to `LBAUDIO_PLUGINS` in the root `CMakeLists.txt`, and write `tests/<Name>Tests.cpp`. (For an instrument, add `INSTRUMENT` to its `lbaudio_add_plugin`.)
 
 The build, the tests on every push, packaging and Mac signing all pick it up automatically.
 
@@ -303,6 +326,7 @@ All plugins share company **LBAudio**, manufacturer code `LBau`, and bundle IDs 
 | Snap | `Snp1` | Fx / Dynamics |
 | Orbit | `Orb1` | Fx / Modulation |
 | Halation | `Hal1` | Fx / Dynamics |
+| Splinter | `Spl1` | Instrument / Sampler |
 
 DAWs recognise a plugin by its manufacturer and plugin codes. Don't change them once people own a copy, or their saved sessions won't find it.
 

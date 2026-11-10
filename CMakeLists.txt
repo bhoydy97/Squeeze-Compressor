@@ -22,7 +22,7 @@ FetchContent_MakeAvailable(JUCE)
 # ------------------------------------------------------------------------------
 set(LBAUDIO_VERSION "${PROJECT_VERSION}" CACHE STRING "Version the DAW shows for every plugin (CI sets it from the release tag)")
 set(LBAUDIO_FORMATS VST3 AU CACHE STRING "Plugin formats to build (AU is only built on macOS)")
-set(LBAUDIO_PLUGINS Squeeze Carve Ember Haze Ceiling Drift Hush Spread Snap Orbit Halation CACHE STRING "Which plugins to build")
+set(LBAUDIO_PLUGINS Squeeze Carve Ember Haze Ceiling Drift Hush Spread Snap Orbit Halation Splinter CACHE STRING "Which plugins to build")
 option(LBAUDIO_COPY_AFTER_BUILD "Copy plugins into your system plugin folders after building" OFF)
 option(LBAUDIO_BUILD_TESTS "Build the test tools" OFF)
 option(LBAUDIO_LTO "Link-time optimisation for release builds (slower to build)" ON)
@@ -36,8 +36,8 @@ include(cmake/LBAudioPlugin.cmake)
 foreach(plugin ${LBAUDIO_PLUGINS})
     add_subdirectory(plugins/${plugin})
 endforeach()
-# The plugins in this build, one a line: CI tests and packages these (a plugin still in the works has a folder
-# under plugins/ but isn't in the list until it's released)
+# The plugins in this build, one a line: CI tests and packages these (a plugin still in the works can have a
+# folder under plugins/ without being in the list)
 list(JOIN LBAUDIO_PLUGINS "\n" lbaudio_plugin_lines)
 file(WRITE "${CMAKE_BINARY_DIR}/plugins.txt" "${lbaudio_plugin_lines}\n")
 
