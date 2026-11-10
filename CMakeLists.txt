@@ -36,6 +36,10 @@ include(cmake/LBAudioPlugin.cmake)
 foreach(plugin ${LBAUDIO_PLUGINS})
     add_subdirectory(plugins/${plugin})
 endforeach()
+# The plugins in this build, one a line: CI tests and packages these (a plugin still in the works has a folder
+# under plugins/ but isn't in the list until it's released)
+list(JOIN LBAUDIO_PLUGINS "\n" lbaudio_plugin_lines)
+file(WRITE "${CMAKE_BINARY_DIR}/plugins.txt" "${lbaudio_plugin_lines}\n")
 
 # ------------------------------------------------------------------------------
 # Licence notices for the third-party code compiled into the plugins.

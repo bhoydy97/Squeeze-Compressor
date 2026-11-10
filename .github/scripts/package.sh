@@ -44,8 +44,7 @@ bundle_list() { sed 's/#.*//; s/[[:space:]]//g' "$1" | grep -v '^$'; }
 
 echo "Packaging $LABEL for $SYSTEM:"
 count=0
-for dir in "$ROOT"/plugins/*/; do
-  name="$(basename "$dir")"
+for name in $(cat "$ROOT/build/plugins.txt"); do   # the plugins in this build (one still in the works isn't listed)
   artefacts="$ROOT/build/plugins/$name/${name}_artefacts/Release"
   [[ -d "$artefacts/VST3/$name.vst3" ]] || { echo "::error::$name.vst3 was not built"; exit 1; }
 
