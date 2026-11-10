@@ -44,7 +44,9 @@ bundle_list() { sed 's/#.*//; s/[[:space:]]//g' "$1" | grep -v '^$'; }
 
 echo "Packaging $LABEL for $SYSTEM:"
 count=0
-for name in $(cat "$ROOT/build/plugins.txt"); do   # the plugins in this build (one still in the works isn't listed)
+# the plugins in this build (one still in the works isn't listed). CMake writes the list with Windows line endings
+# on Windows, so drop the carriage returns.
+for name in $(tr -d '\r' < "$ROOT/build/plugins.txt"); do
   artefacts="$ROOT/build/plugins/$name/${name}_artefacts/Release"
   [[ -d "$artefacts/VST3/$name.vst3" ]] || { echo "::error::$name.vst3 was not built"; exit 1; }
 
