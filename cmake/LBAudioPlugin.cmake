@@ -4,15 +4,23 @@
 #     TYPE "Compressor"                # shown in the plugin header and README
 #     VST3_CATEGORIES Fx Dynamics
 #     SOURCES Source/PluginProcessor.cpp Source/PluginEditor.cpp
-#     [MODULES juce_dsp ...])
+#     [MODULES juce_dsp ...]
+#     [INSTRUMENT])                    # a MIDI-played instrument (synth/sampler) rather than an effect
 #
 # Adds the plugin (VST3 + AU), and when LBAUDIO_BUILD_TESTS is on, a <Name>Tests tool
 # built from tests/<Name>Tests.cpp.
 function(lbaudio_add_plugin name)
-    cmake_parse_arguments(ARG "" "VERSION;PLUGIN_CODE;TYPE" "VST3_CATEGORIES;SOURCES;MODULES" ${ARGN})
+    cmake_parse_arguments(ARG "INSTRUMENT" "VERSION;PLUGIN_CODE;TYPE" "VST3_CATEGORIES;SOURCES;MODULES" ${ARGN})
     string(TOLOWER "${name}" lower)
     if(NOT ARG_VERSION)
         set(ARG_VERSION "${LBAUDIO_VERSION}")
+    endif()
+    if(ARG_INSTRUMENT)
+        set(is_synth TRUE)
+        set(au_type kAudioUnitType_MusicDevice)
+    else()
+        set(is_synth FALSE)
+        set(au_type kAudioUnitType_Effect)
     endif()
 
     juce_add_plugin(${name}
@@ -24,13 +32,13 @@ function(lbaudio_add_plugin name)
         PLUGIN_MANUFACTURER_CODE    LBau
         PLUGIN_CODE                 ${ARG_PLUGIN_CODE}
         FORMATS                     ${LBAUDIO_FORMATS}
-        IS_SYNTH                    FALSE
-        NEEDS_MIDI_INPUT            FALSE
+        IS_SYNTH                    ${is_synth}
+        NEEDS_MIDI_INPUT            ${is_synth}
         NEEDS_MIDI_OUTPUT           FALSE
         IS_MIDI_EFFECT              FALSE
         EDITOR_WANTS_KEYBOARD_FOCUS FALSE
         VST3_CATEGORIES             ${ARG_VST3_CATEGORIES}
-        AU_MAIN_TYPE                kAudioUnitType_Effect
+        AU_MAIN_TYPE                ${au_type}
         COPY_PLUGIN_AFTER_BUILD     ${LBAUDIO_COPY_AFTER_BUILD})
 
     list(TRANSFORM ARG_SOURCES PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/")
