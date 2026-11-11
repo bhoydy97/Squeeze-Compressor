@@ -962,3 +962,65 @@ body.site {
 @media (max-width: 640px) { .spec-two tr { grid-template-columns: 1fr; } }
 .u-splinter[href]:hover .unit-name { text-shadow: 0 0 16px rgba(62, 224, 143, .35); }
 .rack-new .rack-head p a[href^="splinter"] { color: #3ee08f; white-space: nowrap; }
+
+/* A lede can open with a line in bold (Halation: what the name means) */
+.lede strong { color: var(--text); font-weight: 700; }
+
+/* Homepage and the brand's own pages (licence, privacy, refunds, 404): darker, cooler and calmer than the warm theme
+   above, with steel blue to accent and gunmetal rack ears. The product pages and the complete bundle page keep theirs. */
+.site.steel {
+  --bg: #0a0b0d; --text: #eceef1; --muted: #a2a8b1; --soft: #d3d7dd; --line: rgba(255, 255, 255, .11);
+  --panel: rgba(255, 255, 255, .045); --well: rgba(255, 255, 255, .035); --axis: rgba(255, 255, 255, .1);
+  --chip: rgba(255, 255, 255, .05); --code-bg: rgba(255, 255, 255, .07);
+  --teal: #86aedb; --amber: #86aedb; --on-accent: #ffffff; --accent-hover: #4b7fbb;
+  --steel: #3a6aa3; --steel-hover: #4a7cb8; --gunmetal: #2e3238;
+  --rail: #3a3f46; --screw: #6f7680;
+}
+body.site.steel {
+  background-color: #0a0b0d;
+  background-image:
+    radial-gradient(900px 600px at 92% -120px, rgba(52, 88, 132, .34), rgba(52, 88, 132, 0) 70%),
+    radial-gradient(760px 620px at -8% 420px, rgba(38, 52, 70, .5), rgba(38, 52, 70, 0) 70%),
+    radial-gradient(900px 700px at 106% 1700px, rgba(44, 72, 108, .22), rgba(44, 72, 108, 0) 70%),
+    radial-gradient(800px 640px at -6% 2500px, rgba(120, 86, 52, .1), rgba(120, 86, 52, 0) 70%),
+    linear-gradient(180deg, #0d1014 0%, #0a0b0d 40%, #08090a 100%);
+}
+@media (max-width: 640px) {
+  /* a phone sees the glows up close, so they're fainter there */
+  body.site.steel {
+    background-image:
+      radial-gradient(520px 420px at 100% -80px, rgba(52, 88, 132, .26), rgba(52, 88, 132, 0) 70%),
+      radial-gradient(480px 460px at -20% 520px, rgba(38, 52, 70, .38), rgba(38, 52, 70, 0) 70%),
+      radial-gradient(520px 520px at 110% 1900px, rgba(44, 72, 108, .16), rgba(44, 72, 108, 0) 70%),
+      linear-gradient(180deg, #0c0e12 0%, #0a0b0d 30%, #08090a 100%);
+  }
+}
+.site.steel .top { background: rgba(10, 11, 13, .78); }
+.site.steel .brand span {
+  background: linear-gradient(90deg, #a9c6e8, #4f80bb); -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.site.steel .btn-primary { background: var(--steel); color: #ffffff; }
+.site.steel .btn-primary:hover { background: var(--steel-hover); }
+.site.steel .btn-primary [data-price] { border-left-color: rgba(255, 255, 255, .35); }
+.site.steel .btn-ghost { border-color: rgba(255, 255, 255, .26); }
+.site.steel .btn-ghost:hover { border-color: rgba(255, 255, 255, .6); }
+.site.steel .tag { background: var(--gunmetal); color: #dfe6ef; box-shadow: inset 0 0 0 1px rgba(134, 174, 219, .35); }
+.site.steel .deals, .site.steel .deal-best, .site.steel .principles div { border-color: rgba(255, 255, 255, .3); }
+.site.steel .rack-save, .site.steel .deal-save { color: var(--teal); }
+.site.steel .rack-bundle:hover { border-color: rgba(134, 174, 219, .6); }
+.site.steel .fix-chip { background: rgba(255, 255, 255, .04); border-color: rgba(255, 255, 255, .2); }
+.site.steel .fix-chip:hover { border-color: rgba(134, 174, 219, .8); }
+.site.steel .fix-chip[aria-pressed="true"] { background: var(--steel); color: #ffffff; border-color: var(--steel); }
+.site.steel .fix-chip:focus-visible { outline-color: var(--teal); }
+.site.steel .promo-tag { color: #ffffff; }
+.site.steel .trademarks { color: #7c828b; }
+/* gunmetal rack ears, so the rack sits in the dark instead of shining out of it */
+.site.steel .unit::before, .site.steel .unit::after {
+  background:
+    radial-gradient(circle at 50% 20px, var(--screw) 0 3.5px, #24272c 3.6px 4.6px, transparent 4.7px),
+    radial-gradient(circle at 50% calc(100% - 20px), var(--screw) 0 3.5px, #24272c 3.6px 4.6px, transparent 4.7px),
+    linear-gradient(90deg, #454a52, var(--rail) 60%, #30343a);
+}
+.site.steel .unit::before { border-right-color: rgba(0, 0, 0, .45); }
+.site.steel .unit::after { border-left-color: rgba(0, 0, 0, .45); }
+.site.steel .unit:focus-visible { outline-color: var(--teal); }
