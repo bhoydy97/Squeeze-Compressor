@@ -967,16 +967,16 @@ body.site {
 .lede strong { color: var(--text); font-weight: 700; }
 
 /* Homepage and the brand's own pages (licence, privacy, refunds, 404): near black, with slow-drifting glows of emerald,
-   oxblood and bronze behind everything, brass to accent and gunmetal rack ears. The product pages and the complete bundle
+   oxblood, pine and olive behind everything, dark green to accent and gunmetal rack ears. The product pages and the complete bundle
    page keep their own looks. The colours are variables, so a different palette is one block. */
 .site.dark {
   --bg: #0a0a0b; --text: #efece6; --muted: #aaa69f; --soft: #dad6cf; --line: rgba(255, 255, 255, .11);
   --panel: rgba(255, 255, 255, .045); --well: rgba(255, 255, 255, .035); --axis: rgba(255, 255, 255, .1);
   --chip: rgba(255, 255, 255, .05); --code-bg: rgba(255, 255, 255, .07);
-  --acc: #c9a045; --acc-hover: #dbb45c; --acc-ink: #14110a; --acc-text: #dcbc6c; --acc-ring: rgba(220, 188, 108, .4);
-  --brand-a: #e8c873; --brand-b: #b8722e;
-  --g1: rgba(20, 104, 78, .5); --g2: rgba(118, 20, 38, .56); --g3: rgba(150, 102, 34, .4); --g4: rgba(70, 82, 26, .36);
-  --g5: rgba(201, 160, 69, .14);
+  --acc: #2c6a4b; --acc-hover: #357b58; --acc-ink: #ffffff; --acc-text: #74b48d; --acc-ring: rgba(116, 180, 141, .42);
+  --brand-a: #7cc497; --brand-b: #2f7d55;
+  --g1: rgba(20, 104, 78, .5); --g2: rgba(118, 20, 38, .56); --g3: rgba(28, 74, 46, .46); --g4: rgba(70, 82, 26, .36);
+  --g5: rgba(44, 106, 75, .16);
   --teal: var(--acc-text); --amber: var(--acc-text); --on-accent: var(--acc-ink); --accent-hover: var(--acc-hover);
   --gunmetal: #2c2b29; --rail: #3d3c3a; --screw: #77736c;
 }
