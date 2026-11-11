@@ -966,61 +966,70 @@ body.site {
 /* A lede can open with a line in bold (Halation: what the name means) */
 .lede strong { color: var(--text); font-weight: 700; }
 
-/* Homepage and the brand's own pages (licence, privacy, refunds, 404): darker, cooler and calmer than the warm theme
-   above, with steel blue to accent and gunmetal rack ears. The product pages and the complete bundle page keep theirs. */
-.site.steel {
-  --bg: #0a0b0d; --text: #eceef1; --muted: #a2a8b1; --soft: #d3d7dd; --line: rgba(255, 255, 255, .11);
+/* Homepage and the brand's own pages (licence, privacy, refunds, 404): near black, with slow-drifting glows of emerald,
+   oxblood and bronze behind everything, brass to accent and gunmetal rack ears. The product pages and the complete bundle
+   page keep their own looks. The colours are variables, so a different palette is one block. */
+.site.dark {
+  --bg: #0a0a0b; --text: #efece6; --muted: #aaa69f; --soft: #dad6cf; --line: rgba(255, 255, 255, .11);
   --panel: rgba(255, 255, 255, .045); --well: rgba(255, 255, 255, .035); --axis: rgba(255, 255, 255, .1);
   --chip: rgba(255, 255, 255, .05); --code-bg: rgba(255, 255, 255, .07);
-  --teal: #86aedb; --amber: #86aedb; --on-accent: #ffffff; --accent-hover: #4b7fbb;
-  --steel: #3a6aa3; --steel-hover: #4a7cb8; --gunmetal: #2e3238;
-  --rail: #3a3f46; --screw: #6f7680;
+  --acc: #c9a045; --acc-hover: #dbb45c; --acc-ink: #14110a; --acc-text: #dcbc6c; --acc-ring: rgba(220, 188, 108, .4);
+  --brand-a: #e8c873; --brand-b: #b8722e;
+  --g1: rgba(20, 104, 78, .5); --g2: rgba(118, 20, 38, .56); --g3: rgba(150, 102, 34, .4); --g4: rgba(70, 82, 26, .36);
+  --g5: rgba(201, 160, 69, .14);
+  --teal: var(--acc-text); --amber: var(--acc-text); --on-accent: var(--acc-ink); --accent-hover: var(--acc-hover);
+  --gunmetal: #2c2b29; --rail: #3d3c3a; --screw: #77736c;
 }
-body.site.steel {
-  background-color: #0a0b0d;
-  background-image:
-    radial-gradient(900px 600px at 92% -120px, rgba(52, 88, 132, .34), rgba(52, 88, 132, 0) 70%),
-    radial-gradient(760px 620px at -8% 420px, rgba(38, 52, 70, .5), rgba(38, 52, 70, 0) 70%),
-    radial-gradient(900px 700px at 106% 1700px, rgba(44, 72, 108, .22), rgba(44, 72, 108, 0) 70%),
-    radial-gradient(800px 640px at -6% 2500px, rgba(120, 86, 52, .1), rgba(120, 86, 52, 0) 70%),
-    linear-gradient(180deg, #0d1014 0%, #0a0b0d 40%, #08090a 100%);
+body.site.dark { background-color: var(--bg); background-image: none; }
+/* the glows sit on a layer fixed to the window, so they stay with you as you scroll, and drift slowly */
+body.site.dark::before {
+  content: ""; position: fixed; inset: -25%; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(30% 26% at 70% 27%, var(--g1), transparent 70%),
+    radial-gradient(32% 28% at 25% 47%, var(--g2), transparent 70%),
+    radial-gradient(28% 26% at 73% 70%, var(--g3), transparent 70%),
+    radial-gradient(28% 24% at 40% 80%, var(--g4), transparent 70%),
+    radial-gradient(22% 20% at 53% 40%, var(--g5), transparent 70%);
+  animation: lb-drift 48s ease-in-out infinite alternate;
+  will-change: transform;
+}
+@keyframes lb-drift {
+  0%   { transform: translate3d(0, 0, 0) rotate(0deg) scale(1); }
+  33%  { transform: translate3d(-4%, 3%, 0) rotate(6deg) scale(1.06); }
+  66%  { transform: translate3d(3%, -2%, 0) rotate(-4deg) scale(1.02); }
+  100% { transform: translate3d(-2%, -4%, 0) rotate(3deg) scale(1.08); }
 }
 @media (max-width: 640px) {
-  /* a phone sees the glows up close, so they're fainter there */
-  body.site.steel {
-    background-image:
-      radial-gradient(520px 420px at 100% -80px, rgba(52, 88, 132, .26), rgba(52, 88, 132, 0) 70%),
-      radial-gradient(480px 460px at -20% 520px, rgba(38, 52, 70, .38), rgba(38, 52, 70, 0) 70%),
-      radial-gradient(520px 520px at 110% 1900px, rgba(44, 72, 108, .16), rgba(44, 72, 108, 0) 70%),
-      linear-gradient(180deg, #0c0e12 0%, #0a0b0d 30%, #08090a 100%);
-  }
+  /* a phone sees the glows up close, so they're a little fainter there */
+  body.site.dark::before { opacity: .85; }
 }
-.site.steel .top { background: rgba(10, 11, 13, .78); }
-.site.steel .brand span {
-  background: linear-gradient(90deg, #a9c6e8, #4f80bb); -webkit-background-clip: text; background-clip: text; color: transparent;
+@media (prefers-reduced-motion: reduce) { body.site.dark::before { animation: none; } }
+.site.dark .top { background: rgba(10, 10, 11, .74); }
+.site.dark .brand span {
+  background: linear-gradient(90deg, var(--brand-a), var(--brand-b)); -webkit-background-clip: text; background-clip: text; color: transparent;
 }
-.site.steel .btn-primary { background: var(--steel); color: #ffffff; }
-.site.steel .btn-primary:hover { background: var(--steel-hover); }
-.site.steel .btn-primary [data-price] { border-left-color: rgba(255, 255, 255, .35); }
-.site.steel .btn-ghost { border-color: rgba(255, 255, 255, .26); }
-.site.steel .btn-ghost:hover { border-color: rgba(255, 255, 255, .6); }
-.site.steel .tag { background: var(--gunmetal); color: #dfe6ef; box-shadow: inset 0 0 0 1px rgba(134, 174, 219, .35); }
-.site.steel .deals, .site.steel .deal-best, .site.steel .principles div { border-color: rgba(255, 255, 255, .3); }
-.site.steel .rack-save, .site.steel .deal-save { color: var(--teal); }
-.site.steel .rack-bundle:hover { border-color: rgba(134, 174, 219, .6); }
-.site.steel .fix-chip { background: rgba(255, 255, 255, .04); border-color: rgba(255, 255, 255, .2); }
-.site.steel .fix-chip:hover { border-color: rgba(134, 174, 219, .8); }
-.site.steel .fix-chip[aria-pressed="true"] { background: var(--steel); color: #ffffff; border-color: var(--steel); }
-.site.steel .fix-chip:focus-visible { outline-color: var(--teal); }
-.site.steel .promo-tag { color: #ffffff; }
-.site.steel .trademarks { color: #7c828b; }
+.site.dark .btn-primary { background: var(--acc); color: var(--acc-ink); }
+.site.dark .btn-primary:hover { background: var(--acc-hover); }
+.site.dark .btn-primary [data-price] { border-left-color: color-mix(in srgb, var(--acc-ink) 35%, transparent); }
+.site.dark .btn-ghost { border-color: rgba(255, 255, 255, .26); }
+.site.dark .btn-ghost:hover { border-color: rgba(255, 255, 255, .6); }
+.site.dark .tag { background: var(--gunmetal); color: #ece6da; box-shadow: inset 0 0 0 1px var(--acc-ring); }
+.site.dark .deals, .site.dark .deal-best, .site.dark .principles div { border-color: rgba(255, 255, 255, .3); }
+.site.dark .rack-save, .site.dark .deal-save { color: var(--acc-text); }
+.site.dark .rack-bundle:hover { border-color: var(--acc-ring); }
+.site.dark .fix-chip { background: rgba(255, 255, 255, .04); border-color: rgba(255, 255, 255, .2); }
+.site.dark .fix-chip:hover { border-color: var(--acc-text); }
+.site.dark .fix-chip[aria-pressed="true"] { background: var(--acc); color: var(--acc-ink); border-color: var(--acc); }
+.site.dark .fix-chip:focus-visible { outline-color: var(--acc-text); }
+.site.dark .promo-tag { color: var(--acc-ink); }
+.site.dark .trademarks { color: #84807a; }
 /* gunmetal rack ears, so the rack sits in the dark instead of shining out of it */
-.site.steel .unit::before, .site.steel .unit::after {
+.site.dark .unit::before, .site.dark .unit::after {
   background:
-    radial-gradient(circle at 50% 20px, var(--screw) 0 3.5px, #24272c 3.6px 4.6px, transparent 4.7px),
-    radial-gradient(circle at 50% calc(100% - 20px), var(--screw) 0 3.5px, #24272c 3.6px 4.6px, transparent 4.7px),
-    linear-gradient(90deg, #454a52, var(--rail) 60%, #30343a);
+    radial-gradient(circle at 50% 20px, var(--screw) 0 3.5px, #232220 3.6px 4.6px, transparent 4.7px),
+    radial-gradient(circle at 50% calc(100% - 20px), var(--screw) 0 3.5px, #232220 3.6px 4.6px, transparent 4.7px),
+    linear-gradient(90deg, #4a4845, var(--rail) 60%, #302f2d);
 }
-.site.steel .unit::before { border-right-color: rgba(0, 0, 0, .45); }
-.site.steel .unit::after { border-left-color: rgba(0, 0, 0, .45); }
-.site.steel .unit:focus-visible { outline-color: var(--teal); }
+.site.dark .unit::before { border-right-color: rgba(0, 0, 0, .45); }
+.site.dark .unit::after { border-left-color: rgba(0, 0, 0, .45); }
+.site.dark .unit:focus-visible { outline-color: var(--acc-text); }
