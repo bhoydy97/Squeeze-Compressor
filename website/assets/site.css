@@ -966,17 +966,18 @@ body.site {
 /* A lede can open with a line in bold (Halation: what the name means) */
 .lede strong { color: var(--text); font-weight: 700; }
 
-/* Homepage and the brand's own pages (licence, privacy, refunds, 404): near black, with slow-drifting glows of emerald,
-   oxblood, pine and olive behind everything, dark green to accent and gunmetal rack ears. The product pages and the complete bundle
+/* Homepage and the brand's own pages (licence, privacy, refunds, 404): near black, with slow-drifting glows of racing
+   green, oxblood, moss and olive behind everything, British racing green and sage to accent, and gunmetal rack ears.
+   The greens are warm and deep on purpose, so they read as a different family from Splinter's cool mint. The product pages and the complete bundle
    page keep their own looks. The colours are variables, so a different palette is one block. */
 .site.dark {
   --bg: #0a0a0b; --text: #efece6; --muted: #aaa69f; --soft: #dad6cf; --line: rgba(255, 255, 255, .11);
   --panel: rgba(255, 255, 255, .045); --well: rgba(255, 255, 255, .035); --axis: rgba(255, 255, 255, .1);
   --chip: rgba(255, 255, 255, .05); --code-bg: rgba(255, 255, 255, .07);
-  --acc: #2c6a4b; --acc-hover: #357b58; --acc-ink: #ffffff; --acc-text: #74b48d; --acc-ring: rgba(116, 180, 141, .42);
-  --brand-a: #7cc497; --brand-b: #2f7d55;
-  --g1: rgba(20, 104, 78, .5); --g2: rgba(118, 20, 38, .56); --g3: rgba(28, 74, 46, .46); --g4: rgba(70, 82, 26, .36);
-  --g5: rgba(44, 106, 75, .16);
+  --acc: #1d5236; --acc-hover: #256544; --acc-ink: #ffffff; --acc-text: #a3bd8c; --acc-ring: rgba(163, 189, 140, .42);
+  --brand-a: #bcd1a2; --brand-b: #557f4c;
+  --g1: rgba(30, 84, 46, .52); --g2: rgba(118, 20, 38, .56); --g3: rgba(48, 70, 30, .46); --g4: rgba(78, 84, 28, .36);
+  --g5: rgba(29, 82, 54, .16);
   --teal: var(--acc-text); --amber: var(--acc-text); --on-accent: var(--acc-ink); --accent-hover: var(--acc-hover);
   --gunmetal: #2c2b29; --rail: #3d3c3a; --screw: #77736c;
 }
@@ -1033,3 +1034,5 @@ body.site.dark::before {
 .site.dark .unit::before { border-right-color: rgba(0, 0, 0, .45); }
 .site.dark .unit::after { border-left-color: rgba(0, 0, 0, .45); }
 .site.dark .unit:focus-visible { outline-color: var(--acc-text); }
+/* Splinter's own mint stays on its rack unit; the link beside it takes the homepage's sage, so two greens don't meet */
+.site.dark .rack-new .rack-head p a[href^="splinter"] { color: var(--acc-text); }
