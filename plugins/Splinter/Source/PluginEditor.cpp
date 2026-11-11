@@ -204,6 +204,29 @@ void RoundButton::paint (juce::Graphics& g)
         p.lineTo (c.x - k * u * 1.5f, c.y - u * 0.2f);
         p.lineTo (c.x - k * u * 0.3f, c.y - u * 0.15f);
     }
+    else if (symbol == "sound")
+    {
+        // a speaker: sounding (waves, in green) or muted (crossed out)
+        const bool sounding = ! on || on();
+        juce::Path body;
+        body.startNewSubPath (c.x - u * 2.0f, c.y - u * 0.7f); body.lineTo (c.x - u * 1.0f, c.y - u * 0.7f); body.lineTo (c.x + u * 0.2f, c.y - u * 1.7f);
+        body.lineTo (c.x + u * 0.2f, c.y + u * 1.7f); body.lineTo (c.x - u * 1.0f, c.y + u * 0.7f); body.lineTo (c.x - u * 2.0f, c.y + u * 0.7f); body.closeSubPath();
+        g.setColour ((sounding ? accent : text).withMultipliedAlpha (alpha));
+        g.strokePath (body, juce::PathStrokeType (1.5f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+        if (sounding)
+        {
+            p.addCentredArc (c.x + u * 0.2f, c.y, u * 1.1f, u * 1.1f, 0.0f, 0.75f, 2.39f, true);
+            p.addCentredArc (c.x + u * 0.2f, c.y, u * 2.0f, u * 2.0f, 0.0f, 0.7f, 2.44f, true);
+            g.strokePath (p, juce::PathStrokeType (1.5f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+        }
+        else
+        {
+            p.startNewSubPath (c.x + u * 1.0f, c.y - u * 0.8f); p.lineTo (c.x + u * 2.4f, c.y + u * 0.8f);
+            p.startNewSubPath (c.x + u * 2.4f, c.y - u * 0.8f); p.lineTo (c.x + u * 1.0f, c.y + u * 0.8f);
+            g.strokePath (p, juce::PathStrokeType (1.5f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+        }
+        return;
+    }
     else { p.startNewSubPath (c.x - u, c.y - u); p.lineTo (c.x + u, c.y + u); p.startNewSubPath (c.x + u, c.y - u); p.lineTo (c.x - u, c.y + u); }
     g.setColour (text.withMultipliedAlpha (alpha)); g.strokePath (p, juce::PathStrokeType (1.6f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
 }
@@ -263,6 +286,7 @@ void DragMidi::mouseDrag (const juce::MouseEvent& e)
     const auto f = proc.writePatternMidi();
     if (! f.existsAsFile()) return;
     dragging = true;
+    if (onDragOut) onDragOut();
     juce::DragAndDropContainer::performExternalDragDropOfFiles ({ f.getFullPathName() }, false, this, [this] { dragging = false; });
 }
 
@@ -518,6 +542,8 @@ void Lanes::paint (juce::Graphics& g)
     const int cur = ed.proc.patternStep.load();
     const float h = rowH(), cellH = locks ? 22.0f : juce::jmax (12.0f, h * 0.62f);
     const float x0 = locks ? 56.0f : 24.0f, w = (float) getWidth() - x0, gap = 2.0f, cw = (w - gap * (float) (steps - 1)) / (float) steps;
+    const bool quiet = p != nullptr && ! ed.flipSounds();
+    if (quiet) g.beginTransparencyLayer (0.35f);
     for (int ri = 0; ri < shown; ++ri)
     {
         const bool real = ri < (int) rows.size();
@@ -554,6 +580,15 @@ void Lanes::paint (juce::Graphics& g)
             g.setColour (c); g.fillRoundedRectangle (cell, 3.0f);
             if (isCur) { g.setColour (juce::Colours::white.withAlpha (0.35f)); g.drawRoundedRectangle (cell.expanded (0.5f), 3.0f, 1.0f); }
         }
+    }
+    if (quiet)
+    {
+        g.endTransparencyLayer();
+        const juce::String msg ("Muted: the Flip won't play along with your DAW");
+        const float mw = juce::GlyphArrangement::getStringWidth (sans (11.0f), msg) + 28;
+        const auto box = getLocalBounds().toFloat().withSizeKeepingCentre (mw, 28);
+        g.setColour (panel.withAlpha (0.92f)); g.fillRoundedRectangle (box, 8.0f);
+        g.setColour (muted); g.setFont (sans (11.0f)); g.drawText (msg, box, juce::Justification::centred, false);
     }
     if (p == nullptr && ! locks)
     {
@@ -598,10 +633,13 @@ FlipWindow::FlipWindow (SplinterAudioProcessorEditor& e) : lanes (e, true), drag
     busyAtt = std::make_unique<juce::SliderParameterAttachment> (*param (ed.proc, ids::flipBusy), busy);
     again.onClick = [this] { ed.pressFlipAgain(); };
     close.onClick = [this] { ed.setFlipWindowOpen (false); };
-    prev.onClick = [this] { ed.proc.stepFlip (-1); repaint(); };
-    next.onClick = [this] { ed.proc.stepFlip (1); repaint(); };
+    prev.onClick = [this] { ed.stepFlip (-1); };
+    next.onClick = [this] { ed.stepFlip (1); };
+    sound.on = [this] { return ed.flipSounds(); };
+    sound.onClick = [this] { ed.setFlipSounds (! ed.flipSounds()); };
+    drag.onDragOut = [this] { ed.setFlipSounds (false); };
     for (juce::Component* c : { (juce::Component*) &lanes, (juce::Component*) &again, (juce::Component*) &drag, (juce::Component*) &length,
-                                (juce::Component*) &busy, (juce::Component*) &close, (juce::Component*) &prev, (juce::Component*) &next })
+                                (juce::Component*) &busy, (juce::Component*) &close, (juce::Component*) &prev, (juce::Component*) &next, (juce::Component*) &sound })
         addAndMakeVisible (c);
 }
 
@@ -628,6 +666,8 @@ void FlipWindow::resized()
     prev.setBounds (nav.removeFromLeft (32).withSizeKeepingCentre (32, 32));
     navLabel = nav.removeFromLeft (90);
     next.setBounds (nav.removeFromLeft (32).withSizeKeepingCentre (32, 32));
+    nav.removeFromLeft (16);
+    sound.setBounds (nav.removeFromLeft (32).withSizeKeepingCentre (32, 32));
     lanes.setBounds (r.reduced (12).withTrimmedTop (24));
 }
 
@@ -722,8 +762,12 @@ SplinterAudioProcessorEditor::SplinterAudioProcessorEditor (SplinterAudioProcess
     choke.onClick = [this] { const int c = juce::roundToInt (paramValue (proc, ids::pad (selected(), "choke"))); setParam (proc, ids::pad (selected(), "choke"), (float) ((c + 1) % 5)); repaint(); };
     for (auto* c : { &reverse, &oneShot, &choke }) addAndMakeVisible (*c);
     flipButton.onClick = [this] { pressFlip(); };
-    prev.onClick = [this] { proc.stepFlip (-1); repaint(); };
-    next.onClick = [this] { proc.stepFlip (1); repaint(); };
+    prev.onClick = [this] { stepFlip (-1); };
+    next.onClick = [this] { stepFlip (1); };
+    flipSound.on = [this] { return flipSounds(); };
+    flipSound.onClick = [this] { setFlipSounds (! flipSounds()); };
+    addAndMakeVisible (flipSound);
+    drag.onDragOut = [this] { setFlipSounds (false); };
     lanes.onClick = [this] { setFlipWindowOpen (true); };
     for (juce::Component* c : { (juce::Component*) &flipButton, (juce::Component*) &prev, (juce::Component*) &next, (juce::Component*) &lanes, (juce::Component*) &drag })
         addAndMakeVisible (c);
@@ -779,8 +823,15 @@ void SplinterAudioProcessorEditor::setFlipWindowOpen (bool open)
     if (open) flipWindow.toFront (false);
 }
 
-void SplinterAudioProcessorEditor::pressFlip() { proc.flip(); flipButton.flash(); repaint(); }
-void SplinterAudioProcessorEditor::pressFlipAgain() { proc.flip(); flipWindow.again.flash(); flipWindow.repaint(); repaint(); }
+void SplinterAudioProcessorEditor::pressFlip() { proc.flip(); setFlipSounds (true); flipButton.flash(); repaint(); }
+void SplinterAudioProcessorEditor::pressFlipAgain() { proc.flip(); setFlipSounds (true); flipWindow.again.flash(); flipWindow.repaint(); repaint(); }
+void SplinterAudioProcessorEditor::stepFlip (int delta) { proc.stepFlip (delta); setFlipSounds (true); flipWindow.repaint(); repaint(); }
+bool SplinterAudioProcessorEditor::flipSounds() const { return paramValue (proc, ids::flipPreview) > 0.5f; }
+void SplinterAudioProcessorEditor::setFlipSounds (bool on)
+{
+    if (on != flipSounds()) setParam (proc, ids::flipPreview, on ? 1.0f : 0.0f);
+    flipSound.repaint(); flipWindow.repaint(); lanes.repaint(); repaint (flipInfoArea);
+}
 
 void SplinterAudioProcessorEditor::pressLock (int pad, bool on)
 {
@@ -802,7 +853,7 @@ std::vector<std::pair<juce::String, juce::Rectangle<int>>> SplinterAudioProcesso
     const char* names[] = { "pitch", "start", "end", "attack", "release", "filter", "resonance", "drive" };
     for (int k = 0; k < 8; ++k) add (names[k], *knobs[(size_t) k]);
     add ("reverse", reverse); add ("oneShot", oneShot); add ("choke", choke);
-    add ("flip", flipButton); add ("prev", prev); add ("next", next); add ("lanes", lanes); add ("drag", drag);
+    add ("flip", flipButton); add ("prev", prev); add ("next", next); add ("flipSound", flipSound); add ("lanes", lanes); add ("drag", drag);
     out.push_back ({ "flipWindowPanel", juce::Rectangle<int> (320, 0, 560, getHeight()) });
     add ("flipAgain", flipWindow.again); add ("flipWindowLanes", flipWindow.lanes); add ("flipWindowDrag", flipWindow.drag);
     return out;
@@ -847,6 +898,7 @@ void SplinterAudioProcessorEditor::refreshFromProcessor()
     lanes.repaint();
     repeat.repaint();
     flipButton.repaint();
+    flipSound.repaint();
     if (flipWindow.isVisible()) { flipWindow.lanes.repaint(); flipWindow.again.repaint(); }
     drag.repaint();
     repaint (flipInfoArea);
@@ -895,7 +947,8 @@ void SplinterAudioProcessorEditor::resized()
         flipInfoArea = r.removeFromTop (28);
         auto navArea = flipInfoArea;
         next.setBounds (navArea.removeFromRight (28)); navArea.removeFromRight (6);
-        prev.setBounds (navArea.removeFromRight (28));
+        prev.setBounds (navArea.removeFromRight (28)); navArea.removeFromRight (10);
+        flipSound.setBounds (navArea.removeFromRight (28));
         r.removeFromTop (12);
         drag.setBounds (r.removeFromBottom (46)); r.removeFromBottom (12);
         lanes.setBounds (r.reduced (11));
@@ -970,8 +1023,9 @@ void SplinterAudioProcessorEditor::paint (juce::Graphics& g)
         const int n = proc.flipCount();
         auto p = proc.pattern();
         g.drawText (n > 0 ? "Flip " + juce::String (proc.flipIndex() + 1) + " of " + juce::String (n) + juce::String (juce::CharPointer_UTF8 (" \xc2\xb7 ")) + juce::String (p != nullptr ? p->steps / 16 : 2) + " bars"
+                              + (flipSounds() ? juce::String() : juce::String (juce::CharPointer_UTF8 (" \xc2\xb7 muted")))
                           : juce::String ("No flips yet"),
-                    flipInfoArea.toFloat().withTrimmedRight (70), juce::Justification::centredLeft, false);
+                    flipInfoArea.toFloat().withTrimmedRight (108), juce::Justification::centredLeft, false);
     }
 }
 

@@ -68,13 +68,15 @@ public:
     void mouseUp (const juce::MouseEvent& e) override { if (e.mouseWasClicked() && onClick) onClick(); }
 };
 
-// A small round button with a symbol: "<", ">", "x", "undo" or "redo". Dimmed, and deaf to clicks, while enabled() says no.
+// A small round button with a symbol: "<", ">", "x", "undo", "redo" or "sound" (a speaker, sounding while on() says so,
+// crossed out when not). Dimmed, and deaf to clicks, while enabled() says no.
 class RoundButton final : public juce::Component
 {
 public:
     explicit RoundButton (juce::String s) : symbol (std::move (s)) {}
     std::function<void()> onClick;
     std::function<bool()> enabled;
+    std::function<bool()> on;
     void paint (juce::Graphics&) override;
     void mouseUp (const juce::MouseEvent& e) override { if (e.mouseWasClicked() && onClick && (! enabled || enabled())) onClick(); }
 private:
@@ -105,6 +107,7 @@ public:
     explicit DragMidi (SplinterAudioProcessor& p) : proc (p) {}
     void paint (juce::Graphics&) override;
     void mouseDrag (const juce::MouseEvent&) override;
+    std::function<void()> onDragOut;   // the pattern has gone out to the DAW
     float glow = 0.0f;
 private:
     SplinterAudioProcessor& proc;
@@ -174,7 +177,7 @@ private:
     ::SplinterAudioProcessorEditor& ed;
     Seg length { { "1 bar", "2 bars", "4 bars" }, false, true };
     juce::Slider busy;
-    RoundButton close { "x" }, prev { "<" }, next { ">" };
+    RoundButton close { "x" }, prev { "<" }, next { ">" }, sound { "sound" };
     std::unique_ptr<juce::SliderParameterAttachment> busyAtt;
     juce::Rectangle<int> panelArea, checkArea, infoArea, navLabel;
 };
@@ -204,8 +207,13 @@ public:
     double now() const { return proc.audioTime.load(); }
     void setFlipWindowOpen (bool open);
     bool flipWindowOpen() const { return flipWindow.isVisible(); }
-    void pressFlip();                       // as the FLIP button does
+    void pressFlip();                       // as the FLIP button does (and it unmutes the Flip, to hear the new one)
     void pressFlipAgain();
+    void stepFlip (int delta);              // as < and > do (unmuting too)
+    // Whether the Flip plays along while the DAW plays. Off once the pattern is dragged out (the DAW plays it from then
+    // on), or with the speaker button; FLIP and < > turn it back on.
+    bool flipSounds() const;
+    void setFlipSounds (bool on);
     std::function<double()> buttonClock;    // what the FLIP buttons' flash is timed by (wall clock in a DAW, audio time in the video)
     splinter::ui::DragMidi& dragBox() { return drag; }
     void pressLock (int pad, bool on);      // as a lock in the Flip window does
@@ -227,7 +235,7 @@ private:
     std::array<std::unique_ptr<splinter::ui::Knob>, 8> knobs;
     splinter::ui::Pill reverse, oneShot, choke;
     splinter::ui::FlipButton flipButton { "FLIP", 24.0f, true };
-    splinter::ui::RoundButton prev { "<" }, next { ">" };
+    splinter::ui::RoundButton prev { "<" }, next { ">" }, flipSound { "sound" };
     splinter::ui::Lanes lanes { *this, false };
     splinter::ui::DragMidi drag { proc };
     splinter::ui::FlipWindow flipWindow { *this };

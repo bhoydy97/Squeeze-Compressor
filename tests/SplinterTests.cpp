@@ -515,6 +515,25 @@ void runSuite (juce::AudioProcessor& p)
         ed.setFlipWindowOpen (true);
         check (ed.flipWindowOpen(), "Clicking the lanes opens the Flip window", "");
         ed.setFlipWindowOpen (false);
+        // The Flip's speaker: dragging the pattern out mutes it (the DAW plays it from then on); FLIP and < > unmute it
+        if (ed.dragBox().onDragOut) ed.dragBox().onDragOut();
+        const bool mutedByDrag = ! ed.flipSounds();
+        ed.pressFlip();
+        const bool backOnFlip = ed.flipSounds();
+        ed.setFlipSounds (false); ed.stepFlip (-1);
+        const bool backOnStep = ed.flipSounds();
+        ed.setFlipSounds (false);
+        const bool speakerOff = juce::approximatelyEqual (sp->apvts.getRawParameterValue (splinter::ids::flipPreview)->load(), 0.0f);
+        check (mutedByDrag && backOnFlip && backOnStep && speakerOff, "The Flip mutes when dragged into the DAW or with its speaker; FLIP and < > unmute it",
+               juce::String (mutedByDrag ? "" : "drag didn't mute ") + (backOnFlip ? "" : "FLIP didn't unmute ") + (backOnStep ? "" : "< > didn't unmute ") + (speakerOff ? "" : "speaker didn't mute"));
+        {
+            Transport tp; tp.bpm = 92.0; tp.playing = true;
+            const auto own = play (p, 1.0, { { 0.1, 0, 0.9f, true } }, &tp);   // your own playing, from a controller, while the DAW plays
+            const auto none = play (p, 1.0, {}, &tp);
+            check (peakDb (own[0]) > -40 && peakDb (none[0]) < -120, "With the Flip muted, your own pads still play (and nothing else does)",
+                   fmt (peakDb (own[0])) + " dB with a pad, " + fmt (peakDb (none[0])) + " dB without");
+        }
+        ed.setFlipSounds (true);
         // Cmd/Ctrl+Z and Shift+Cmd/Ctrl+Z in Tap mode; in the other modes the keys go back to the host
         const juce::KeyPress undoKey ('z', juce::ModifierKeys::commandModifier, 0), redoKey ('z', juce::ModifierKeys::commandModifier | juce::ModifierKeys::shiftModifier, 0);
         const bool othersPassed = ! ed.keyPressed (undoKey);

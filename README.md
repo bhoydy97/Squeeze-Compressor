@@ -196,7 +196,7 @@ An instrument: MIDI in (pads 1-16 on notes C1 to D#2, with velocity), stereo out
 | Flip Length / Busy / Start On Chop 1 | 1, 2, 4 bars / 0 … 100 % / on/off | Settings for new Flip patterns |
 | Volume | −24 … +6 dB | Output level |
 
-**Flip** writes a pattern from the chops (kick-like chops on the strong beats, snare-like ones on the backbeat, hats and the rest around them), which plays along while the host plays. Every flip is kept (‹ › to step through), rows can be locked so they survive the next flip, and **Drag MIDI into your DAW** drags the pattern out as a `.mid` at the host's tempo and swing. The sample is saved inside the DAW session as 24-bit FLAC, with the taps, the flips and every pad's settings.
+**Flip** writes a pattern from the chops (kick-like chops on the strong beats, snare-like ones on the backbeat, hats and the rest around them), which plays along while the host plays. The speaker by ‹ › mutes it, so you can play or record your own part over the DAW without it; it mutes itself when you drag the pattern into your DAW (the DAW plays it from then on), and FLIP or ‹ › turn it back on. Every flip is kept (‹ › to step through), rows can be locked so they survive the next flip, and **Drag MIDI into your DAW** drags the pattern out as a `.mid` at the host's tempo and swing. The sample is saved inside the DAW session as 24-bit FLAC, with the taps, the flips and every pad's settings.
 
 ## Getting the plugins
 
