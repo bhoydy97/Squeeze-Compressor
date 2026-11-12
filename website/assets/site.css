@@ -1036,3 +1036,113 @@ body.site.dark::before {
 .site.dark .unit:focus-visible { outline-color: var(--acc-text); }
 /* Splinter's own mint stays on its rack unit; the link beside it takes the homepage's sage, so two greens don't meet */
 .site.dark .rack-new .rack-head p a[href^="splinter"] { color: var(--acc-text); }
+
+/* The new plugins, side by side on a desktop like the core 5 and the FX 5, above the complete bundle */
+.rack-new-grid { margin-top: clamp(40px, 5vw, 64px); }
+.rack-new-grid .rack { max-width: none; }
+
+/* ---- Coming soon: one ad for Halation and Splinter, the plugins as 3D slabs ------------------------------------- */
+.launch { padding-top: clamp(14px, 2.4vw, 28px); }
+.launch-panel {
+  position: relative; overflow: hidden; isolation: isolate;
+  display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); align-items: center; gap: 12px clamp(16px, 3vw, 40px);
+  padding: clamp(22px, 3.4vw, 44px); border-radius: 18px; border: 1px solid rgba(255, 255, 255, .1);
+  background:
+    radial-gradient(60% 90% at 62% 40%, rgba(255, 92, 48, .2), transparent 70%),
+    radial-gradient(55% 85% at 96% 70%, rgba(62, 224, 143, .16), transparent 70%),
+    linear-gradient(135deg, #120c0b 0%, #0c0d0e 55%, #0a0f0c 100%);
+}
+/* a line of light along the top: Halation's warm colours into Splinter's mint */
+.launch-panel::before {
+  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px; z-index: 1;
+  background: linear-gradient(90deg, transparent, #ff5a36 18%, #ffb240 40%, #3ee08f 72%, transparent);
+  background-size: 200% 100%; animation: launch-line 7s linear infinite;
+}
+@keyframes launch-line { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+.launch-kicker {
+  display: inline-flex; align-items: center; gap: 10px; margin: 0;
+  font: 600 0.78rem/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: #f1eee8;
+  padding: 7px 12px 6px; border-radius: 999px; background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .14);
+}
+.launch-dot { width: 8px; height: 8px; border-radius: 50%; background: #3ee08f; box-shadow: 0 0 0 0 rgba(62, 224, 143, .7); animation: launch-pulse 2s ease-out infinite; }
+@keyframes launch-pulse { 0% { box-shadow: 0 0 0 0 rgba(62, 224, 143, .65); } 70%, 100% { box-shadow: 0 0 0 10px rgba(62, 224, 143, 0); } }
+.launch-title {
+  margin-top: 18px; font-size: clamp(2.4rem, 5.6vw, 4.6rem); line-height: .95; letter-spacing: -0.01em; text-wrap: balance;
+}
+.lt-hal { color: #fff1e6; text-shadow: 0 0 1px rgba(255, 228, 207, .8), 0 0 18px rgba(255, 70, 40, .75), 0 0 46px rgba(255, 70, 40, .35); }
+.lt-amp { color: rgba(255, 255, 255, .45); font-weight: 500; }
+.lt-spl { color: #f3f4f5; text-shadow: 0 0 22px rgba(62, 224, 143, .35); }
+.launch-lede { margin: 12px 0 0; color: var(--soft); font-size: clamp(1.05rem, 1.4vw, 1.2rem); }
+.launch-list { list-style: none; margin: 18px 0 0; padding: 0; display: grid; gap: 10px; max-width: 46ch; }
+.launch-list li { display: grid; gap: 2px; padding-left: 14px; border-left: 2px solid; color: var(--muted); font-size: 0.98rem; line-height: 1.45; }
+.launch-list strong { color: var(--text); font-weight: 650; }
+.ll-hal { border-color: #ff6a3d; }
+.ll-spl { border-color: #3ee08f; }
+.launch-cta { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 22px; }
+.launch-btn { background: transparent; color: var(--text); border: 1px solid; }
+.launch-btn-hal { border-color: rgba(255, 106, 61, .7); }
+.launch-btn-hal:hover { background: rgba(255, 106, 61, .14); border-color: #ff6a3d; }
+.launch-btn-spl { border-color: rgba(62, 224, 143, .65); }
+.launch-btn-spl:hover { background: rgba(62, 224, 143, .12); border-color: #3ee08f; }
+
+/* the stage: two slabs in perspective, each with a little depth (a side and an underside), its own glow behind it,
+   a sheen that sweeps across now and then, floating on its own slow cycle; the whole scene leans to the pointer */
+.launch-stage { position: relative; height: clamp(250px, 34vw, 430px); perspective: 1500px; perspective-origin: 50% 40%; }
+.launch-scene {
+  position: absolute; inset: 0; transform-style: preserve-3d;
+  transform: rotateX(var(--lx, 0deg)) rotateY(var(--ly, 0deg)); transition: transform .5s cubic-bezier(.2, .7, .2, 1);
+}
+.launch-float { position: absolute; transform-style: preserve-3d; }
+/* the floor: a soft shadow under the pair, so they hang in the space rather than sit on the page */
+.launch-scene::after {
+  content: ""; position: absolute; left: 8%; right: 4%; bottom: -4%; height: 18%; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(0, 0, 0, .7), transparent); filter: blur(10px); transform: translateZ(-120px);
+}
+.lf-hal { left: 0; top: 4%; width: 66%; animation: launch-float-a 9s ease-in-out infinite; }
+.lf-spl { right: 0; top: 30%; width: 62%; animation: launch-float-b 11s ease-in-out infinite; }
+@keyframes launch-float-a { 0%, 100% { transform: translate3d(0, 0, 0); } 50% { transform: translate3d(0, -12px, 18px); } }
+@keyframes launch-float-b { 0%, 100% { transform: translate3d(0, -6px, 10px); } 50% { transform: translate3d(0, 8px, -6px); } }
+.slab { --d: 16px; position: relative; transform-style: preserve-3d; border-radius: 10px; }
+.slab-hal { transform: translateZ(-80px) rotateY(30deg) rotateX(9deg) rotateZ(-3deg); }
+.slab-spl { transform: translateZ(60px) rotateY(-27deg) rotateX(7deg) rotateZ(2deg); }
+.slab img { display: block; width: 100%; height: auto; border-radius: 10px; position: relative; z-index: 1; box-shadow: 0 0 0 1px rgba(255, 255, 255, .08); }
+/* the glow each plugin throws onto the stage, set back behind it */
+.slab::before {
+  content: ""; position: absolute; inset: -16% -12%; border-radius: 50%; transform: translateZ(-90px); filter: blur(42px);
+  opacity: .85; animation: launch-breathe 6s ease-in-out infinite;
+}
+.slab-hal::before { background: radial-gradient(closest-side, rgba(255, 74, 40, .95), rgba(255, 160, 60, .4), transparent); }
+.slab-spl::before { background: radial-gradient(closest-side, rgba(62, 224, 143, .75), rgba(62, 224, 143, .18), transparent); animation-delay: -3s; }
+@keyframes launch-breathe { 0%, 100% { opacity: .6; } 50% { opacity: .95; } }
+/* depth: a side and an underside, folded back from the face */
+.slab-side { position: absolute; display: block; background: linear-gradient(180deg, #2a2b2e, #111214); }
+.slab-right { top: 2px; bottom: 2px; left: calc(100% - 1px); width: var(--d); transform-origin: left center; transform: rotateY(90deg); border-radius: 0 6px 6px 0; }
+.slab-bottom { left: 2px; right: 2px; top: calc(100% - 1px); height: var(--d); transform-origin: top center; transform: rotateX(-90deg); background: linear-gradient(90deg, #17181a, #2d2e31, #17181a); }
+.slab-hal .slab-right { box-shadow: inset 0 0 12px rgba(255, 90, 54, .35); }
+.slab-spl .slab-right { box-shadow: inset 0 0 12px rgba(62, 224, 143, .25); }
+/* the sheen: a band of light that sweeps the glass every few seconds */
+.slab-sheen {
+  position: absolute; inset: 0; z-index: 2; border-radius: 10px; pointer-events: none; display: block;
+  background: linear-gradient(112deg, transparent 38%, rgba(255, 255, 255, .16) 47%, rgba(255, 255, 255, .05) 52%, transparent 60%);
+  background-size: 300% 100%; background-position: 120% 0; mix-blend-mode: screen;
+  animation: launch-sheen 7s ease-in-out infinite;
+}
+.slab-spl .slab-sheen { animation-delay: -3.5s; }
+@keyframes launch-sheen { 0%, 55% { background-position: 120% 0; } 85%, 100% { background-position: -20% 0; } }
+@media (max-width: 860px) {
+  /* on a phone the plugins come first, then a shorter pitch */
+  .launch-panel { grid-template-columns: 1fr; padding-top: 14px; }
+  .launch-stage { order: -1; height: clamp(220px, 60vw, 380px); margin: 0 -6px; }
+  .lf-hal { width: 72%; top: 4%; }
+  .lf-spl { width: 68%; top: 36%; }
+  .launch-title { margin-top: 14px; }
+  .launch-list { margin-top: 14px; gap: 8px; }
+  .launch-list span { font-size: 0.94rem; }
+}
+/* phones and tablets (no pointer to follow): the scene sways a little on its own instead */
+@media (hover: none) { .launch-scene { animation: launch-sway 12s ease-in-out infinite; } }
+@keyframes launch-sway { 0%, 100% { transform: rotateX(2deg) rotateY(-5deg); } 50% { transform: rotateX(-1deg) rotateY(5deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .launch-panel::before, .launch-dot, .launch-float, .slab::before, .slab-sheen, .launch-scene { animation: none !important; }
+  .launch-scene { transition: none; }
+}

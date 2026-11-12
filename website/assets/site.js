@@ -219,3 +219,17 @@
   if (auto) requestAnimationFrame(tick);
 
 })();
+
+// The coming-soon ad: the 3D scene leans a few degrees towards the pointer (desktop only, and not for reduced motion)
+(function () {
+  var panel = document.querySelector(".launch-panel"), scene = document.querySelector(".launch-scene");
+  if (!panel || !scene) return;
+  if (!window.matchMedia("(hover: hover)").matches || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  panel.addEventListener("pointermove", function (e) {
+    var r = panel.getBoundingClientRect();
+    var x = (e.clientX - r.left) / r.width - 0.5, y = (e.clientY - r.top) / r.height - 0.5;
+    scene.style.setProperty("--ly", (x * 12).toFixed(2) + "deg");
+    scene.style.setProperty("--lx", (-y * 8).toFixed(2) + "deg");
+  });
+  panel.addEventListener("pointerleave", function () { scene.style.setProperty("--ly", "0deg"); scene.style.setProperty("--lx", "0deg"); });
+})();
