@@ -16,7 +16,9 @@
 // Ember's Tube curve); what the curve adds, minus its fundamental and DC, is scaled back and added to the band. So the
 // harmonics sit at the same distance below the band whether it's loud or quiet, the band's own level
 // doesn't move, and each band's harmonics are made from that band alone. They're high-passed at the band's
-// lower edge, so nothing the envelope does can thump below the band.
+// lower edge, so nothing the envelope does can thump below the band. The four bands' harmonics are then summed and
+// low-passed steeply below the host's Nyquist before coming back down from 4x, so harmonics that land between
+// the host's Nyquist and the down-sampling filter's stop band can't fold back as aliases.
 
 #include <LBAudio/Biquad.h>
 #include "../../Squeeze/Source/CompressorDSP.h"
@@ -39,6 +41,12 @@ inline const char* bandName (int b)
 constexpr float minSplitRatio = 1.6f;
 
 struct Splits { float low = 120.0f, mid = 1000.0f, high = 6000.0f; };
+
+inline bool sameSplits (const Splits& a, const Splits& b) noexcept
+{
+    auto same = [] (float x, float y) { return std::abs (x - y) <= std::abs (y) * 1.0e-4f; };
+    return same (a.low, b.low) && same (a.mid, b.mid) && same (a.high, b.high);
+}
 
 // Puts the split points in order and keeps them apart, whatever the three knobs say.
 inline Splits orderedSplits (Splits s, double fs)
@@ -208,15 +216,17 @@ struct ToneShape
 
     float driveFor (float amount) const noexcept { return maxDrive * (exciteMinDrive + (1.0f - exciteMinDrive) * std::clamp (amount, 0.0f, 1.0f)); }
 
-    // The harmonics of a band scaled to about 1 (u is the band over its level), at 'amount'
-    float harmonics (float u, float amount) const noexcept
+    // The harmonics of a band scaled to about 1 (u is the band over its level), at 'amount'. dcScale is how much of
+    // the curve's DC to take away: 1 for a channel at the band's level, less for a quieter one (0 for a silent channel,
+    // so a stereo-linked envelope never puts a DC step, and so a trace of the other channel, into it).
+    float harmonics (float u, float amount, float dcScale = 1.0f) const noexcept
     {
         const float drive = driveFor (amount);
         const float pos = (drive / maxDrive - exciteMinDrive) / (1.0f - exciteMinDrive) * (float) (tableSize - 1);
         const int i = std::clamp ((int) pos, 0, tableSize - 2);
         const float f = std::clamp (pos - (float) i, 0.0f, 1.0f);
         auto at = [i, f] (const std::array<float, tableSize>& t) { return t[(size_t) i] + f * (t[(size_t) i + 1] - t[(size_t) i]); };
-        const float raw = curve (u * drive) / drive - u + at (fundamental) * u - at (dc);
+        const float raw = curve (u * drive) / drive - u + at (fundamental) * u - at (dc) * dcScale;
         return gain * at (level) * raw;
     }
 };
@@ -282,7 +292,8 @@ inline const ToneShape& toneShape (int t)
 // A change of tone fades the harmonics out, swaps, and fades them back in, so it never clicks.
 struct Exciter
 {
-    double env = 0.0;
+    double env = 0.0;                    // stereo-linked: sets the level the harmonics are made at
+    std::array<double, 2> envCh {};      // each channel's own: how much of the curve's DC that channel takes away
     int tone = 0;
     float fade = 1.0f;
     double lowEdge = 20.0, highEdge = 20000.0, fs = 48000.0;
@@ -292,6 +303,7 @@ struct Exciter
     void reset() noexcept
     {
         env = 0.0;
+        envCh = {};
         for (auto& c : chain) { c.hp1.reset(); c.hp2.reset(); c.lp.reset(); }
     }
 

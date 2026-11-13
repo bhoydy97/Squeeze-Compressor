@@ -114,7 +114,21 @@ void HalationAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlo
     const int osMax = maxChunk * (1 << oversamplingStages);
     for (auto& b : bandBuffers) b.setSize (2, osMax);
     dryBuffer.setSize (2, osMax);
+    harmonicsBuffer.setSize (2, osMax);
+    splitsAt.assign ((size_t) (osMax / glideStep + 2), halation::Splits {});
     for (auto& c : compressors) c.prepare (osFs, 2);
+
+    // The harmonics' low-pass: steep (16th-order Butterworth) at 0.4 of the host's rate, so nothing the exciters make
+    // reaches the band where the down-sampling filter lets it fold back
+    const auto qs = lbaudio::dsp::butterworthQs (antiAliasOrder);
+    for (auto& chain : antiAlias)
+        for (size_t s = 0; s < chain.size(); ++s)
+            chain[s].c = lbaudio::dsp::design (lbaudio::dsp::Shape::LowPass, 0.4 * fs, 0.0, qs[s], osFs);
+
+    // The bypassed sound is the input, delayed by the latency
+    bypassDelay.setSize (2, getLatencySamples());
+    bypassDelay.clear();
+    bypassPos = 0;
 
     smoothCoeff = 1.0f - (float) std::exp (-1.0 / (0.02 * fs));
     exciteAttack = std::exp (-1.0 / (halation::exciteAttackS * osFs));
@@ -128,6 +142,8 @@ void HalationAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlo
     {
         excite[(size_t) b] = p.bands[(size_t) b].excite;
         exciteMix[(size_t) b] = p.bands[(size_t) b].exciteMix;
+        compThreshold[(size_t) b] = p.bands[(size_t) b].thresholdDb;
+        compRatio[(size_t) b] = p.bands[(size_t) b].ratio;
         exciters[(size_t) b].fade = 1.0f;
         exciters[(size_t) b].setTone (p.bands[(size_t) b].tone);
     }
@@ -141,6 +157,10 @@ void HalationAudioProcessor::reset()
     for (auto& x : crossover) x.reset();
     for (auto& c : compressors) c.reset();
     for (auto& e : exciters) e.reset();
+    for (auto& chain : antiAlias) for (auto& f : chain) f.reset();
+    antiAliasRunning = false;
+    bypassDelay.clear();
+    bypassPos = 0;
 }
 
 bool HalationAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -148,6 +168,14 @@ bool HalationAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts)
     const auto out = layouts.getMainOutputChannelSet();
     return (out == juce::AudioChannelSet::mono() || out == juce::AudioChannelSet::stereo())
            && layouts.getMainInputChannelSet() == out;
+}
+
+void HalationAudioProcessor::setSplits (const halation::Splits& s)
+{
+    currentSplits = s;
+    for (auto& x : crossover) x.set (currentSplits, osFs);
+    const float edges[halation::numBands + 1] = { 20.0f, s.low, s.mid, s.high, 20000.0f };
+    for (int b = 0; b < halation::numBands; ++b) exciters[(size_t) b].setEdges (edges[b], edges[b + 1], osFs);
 }
 
 void HalationAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
@@ -158,28 +186,25 @@ void HalationAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
     for (int ch = channels; ch < buffer.getNumChannels(); ++ch) buffer.clear (ch, 0, n);
     if (oversampler == nullptr || channels == 0 || n == 0) return;
 
+    // Keep the input, the latency back, for the bypassed sound: switching to bypass then stays in time
+    if (const int len = bypassDelay.getNumSamples(); len > 0)
+    {
+        for (int ch = 0; ch < channels; ++ch)
+        {
+            float* d = bypassDelay.getWritePointer (ch);
+            const float* x = buffer.getReadPointer (ch);
+            int pos = bypassPos;
+            for (int i = 0; i < n; ++i) { d[pos] = x[i]; if (++pos == len) pos = 0; }
+        }
+        bypassPos = (bypassPos + n) % len;
+    }
+
     const auto p = currentParams();
 
-    // Split points: ordered, then glide (in octaves) so dragging them doesn't zip
-    const auto target = halation::orderedSplits (p.splits, fs);
-    auto next = target;
-    if (currentSplits.low > 0.0f)
-    {
-        const float a = 1.0f - (float) std::exp (-(double) n / (0.03 * fs));
-        auto glide = [a] (float cur, float tgt) { return cur * std::pow (tgt / cur, a); };
-        next = { glide (currentSplits.low, target.low), glide (currentSplits.mid, target.mid), glide (currentSplits.high, target.high) };
-    }
-    auto moved = [] (float a, float b) { return std::abs (a - b) > b * 1.0e-4f; };
-    if (currentSplits.low < 0.0f || moved (next.low, currentSplits.low) || moved (next.mid, currentSplits.mid) || moved (next.high, currentSplits.high))
-    {
-        currentSplits = next;
-        for (auto& x : crossover) x.set (currentSplits, osFs);
-        const float edges[halation::numBands + 1] = { 20.0f, currentSplits.low, currentSplits.mid, currentSplits.high, 20000.0f };
-        for (int b = 0; b < halation::numBands; ++b) exciters[(size_t) b].setEdges (edges[b], edges[b + 1], osFs);
-    }
-
-    for (int b = 0; b < halation::numBands; ++b)
-        compressors[(size_t) b].setParams (halation::compressorParams (p.bands[(size_t) b]));
+    // Split points: ordered here, then they glide (in octaves) a few samples at a time inside processChunk, so
+    // moving one never steps the filters by much at once
+    targetSplits = halation::orderedSplits (p.splits, fs);
+    if (currentSplits.low < 0.0f) setSplits (targetSplits);
 
     for (int start = 0; start < n; start += maxChunk)
     {
@@ -187,6 +212,29 @@ void HalationAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
         float* ptrs[2] = { buffer.getWritePointer (0, start), channels > 1 ? buffer.getWritePointer (1, start) : nullptr };
         processChunk (ptrs, channels, len, p);
     }
+}
+
+void HalationAudioProcessor::processBlockBypassed (juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
+{
+    const int n = buffer.getNumSamples();
+    const int channels = juce::jmin (2, getTotalNumInputChannels(), buffer.getNumChannels());
+    for (int ch = channels; ch < buffer.getNumChannels(); ++ch) buffer.clear (ch, 0, n);
+    const int len = bypassDelay.getNumSamples();
+    if (len == 0 || n == 0) return;
+    for (int ch = 0; ch < channels; ++ch)
+    {
+        float* d = bypassDelay.getWritePointer (ch);
+        float* x = buffer.getWritePointer (ch);
+        int pos = bypassPos;
+        for (int i = 0; i < n; ++i)
+        {
+            const float delayed = d[pos];
+            d[pos] = x[i];
+            x[i] = delayed;
+            if (++pos == len) pos = 0;
+        }
+    }
+    bypassPos = (bypassPos + n) % len;
 }
 
 void HalationAudioProcessor::processChunk (float* const* io, int channels, int n, const halation::Params& p)
@@ -205,73 +253,147 @@ void HalationAudioProcessor::processChunk (float* const* io, int channels, int n
     }
     scopeIn.push (io[0], channels > 1 ? io[1] : nullptr, n);
 
-    // 2) Up to 4x, split into four bands (and the phase-matched dry signal)
+    // 2) Up to 4x, split into four bands (and the phase-matched dry signal). A moved split glides to its new place a
+    //    glideStep at a time (about 30 ms, in octaves), so the filters only ever take small steps.
     juce::dsp::AudioBlock<float> block (io, (size_t) channels, (size_t) n);
     auto up = oversampler->processSamplesUp (block);
     const int upN = (int) up.getNumSamples();
+    const int steps = (upN + glideStep - 1) / glideStep;
+    const float glide = 1.0f - (float) std::exp (-(double) glideStep / (0.03 * osFs));
     std::array<float, halation::numBands> bands {};
-    for (int ch = 0; ch < channels; ++ch)
+    for (int s = 0; s < steps; ++s)
     {
-        const float* x = up.getChannelPointer ((size_t) ch);
-        float* dry = dryBuffer.getWritePointer (ch);
-        float* out[halation::numBands];
-        for (int b = 0; b < halation::numBands; ++b) out[b] = bandBuffers[(size_t) b].getWritePointer (ch);
-        auto& xo = crossover[(size_t) ch];
-        for (int i = 0; i < upN; ++i)
+        if (! halation::sameSplits (currentSplits, targetSplits))
         {
-            xo.process (x[i], bands, dry[i]);
-            for (int b = 0; b < halation::numBands; ++b) out[b][i] = bands[(size_t) b];
+            auto toward = [glide] (float cur, float tgt) { return cur * std::pow (tgt / cur, glide); };
+            halation::Splits next { toward (currentSplits.low, targetSplits.low), toward (currentSplits.mid, targetSplits.mid),
+                                    toward (currentSplits.high, targetSplits.high) };
+            if (halation::sameSplits (next, targetSplits)) next = targetSplits;
+            currentSplits = next;
+            for (auto& x : crossover) x.set (currentSplits, osFs);
         }
-        xo.snap();
-    }
+        splitsAt[(size_t) s] = currentSplits;
 
-    // 3) Each band: compress, then excite
+        const int from = s * glideStep, to = juce::jmin (upN, from + glideStep);
+        for (int ch = 0; ch < channels; ++ch)
+        {
+            const float* x = up.getChannelPointer ((size_t) ch);
+            float* dry = dryBuffer.getWritePointer (ch);
+            float* out[halation::numBands];
+            for (int b = 0; b < halation::numBands; ++b) out[b] = bandBuffers[(size_t) b].getWritePointer (ch);
+            auto& xo = crossover[(size_t) ch];
+            for (int i = from; i < to; ++i)
+            {
+                xo.process (x[i], bands, dry[i]);
+                for (int b = 0; b < halation::numBands; ++b) out[b][i] = bands[(size_t) b];
+            }
+        }
+    }
+    for (int ch = 0; ch < channels; ++ch) crossover[(size_t) ch].snap();
+
+    // 3) Each band: compress, then excite. The harmonics of the bands you hear collect in their own buffer.
+    bool anySolo = false;
+    for (const auto& bp : p.bands) anySolo = anySolo || bp.solo;
+    for (int ch = 0; ch < 2; ++ch) harmonicsBuffer.clear (ch, 0, upN);
+    bool anyHarmonics = false;
     const float osSmooth = 1.0f - (float) std::exp (-1.0 / (0.02 * osFs));
     for (int b = 0; b < halation::numBands; ++b)
     {
         const auto& bp = p.bands[(size_t) b];
         auto& buf = bandBuffers[(size_t) b];
+        auto& ex = exciters[(size_t) b];
+        auto followSplits = [&ex, b] (const halation::Splits& sp, double rate)
+        {
+            const float edges[halation::numBands + 1] = { 20.0f, sp.low, sp.mid, sp.high, 20000.0f };
+            if (! juce::exactlyEqual (ex.lowEdge, (double) edges[b]) || ! juce::exactlyEqual (ex.highEdge, (double) edges[b + 1]))
+                ex.setEdges (edges[b], edges[b + 1], rate);
+        };
         if (bp.bypass)
         {
             excite[(size_t) b] = bp.excite;
             exciteMix[(size_t) b] = bp.exciteMix;
+            followSplits (splitsAt[(size_t) steps - 1], osFs);
             continue;
         }
-        float* ptrs[2] = { buf.getWritePointer (0), buf.getWritePointer (channels > 1 ? 1 : 0) };
-        const auto stats = compressors[(size_t) b].process (ptrs, channels, nullptr, 0, upN);
-        lbaudio::ui::storeMax (meterReduction[(size_t) b], stats.maxGainReductionDb);
+        // Compress. Threshold and ratio glide (about 20 ms) so a moved knob can't jump the gain, even at the fastest
+        // attack; the compressor smooths its makeup itself.
+        {
+            auto& comp = compressors[(size_t) b];
+            auto cp = halation::compressorParams (bp);
+            float& thr = compThreshold[(size_t) b];
+            float& ratio = compRatio[(size_t) b];
+            float reduction = 0.0f;
+            if (std::abs (thr - bp.thresholdDb) < 0.01f && std::abs (ratio - bp.ratio) < 0.001f)
+            {
+                thr = bp.thresholdDb; ratio = bp.ratio;
+                comp.setParams (cp);
+                float* ptrs[2] = { buf.getWritePointer (0), buf.getWritePointer (channels > 1 ? 1 : 0) };
+                reduction = comp.process (ptrs, channels, nullptr, 0, upN).maxGainReductionDb;
+            }
+            else
+            {
+                const float a = 1.0f - (float) std::exp (-(double) glideStep / (0.02 * osFs));
+                for (int from = 0; from < upN; from += glideStep)
+                {
+                    thr += (bp.thresholdDb - thr) * a;
+                    ratio += (bp.ratio - ratio) * a;
+                    cp.thresholdDb = thr; cp.ratio = ratio;
+                    comp.setParams (cp);
+                    float* ptrs[2] = { buf.getWritePointer (0, from), buf.getWritePointer (channels > 1 ? 1 : 0, from) };
+                    reduction = juce::jmax (reduction, comp.process (ptrs, channels, nullptr, 0, juce::jmin (glideStep, upN - from)).maxGainReductionDb);
+                }
+            }
+            lbaudio::ui::storeMax (meterReduction[(size_t) b], reduction);
+        }
 
         const float target = bp.excite, mixTarget = bp.exciteMix;
-        auto& ex = exciters[(size_t) b];
         if (target > 0.0f || excite[(size_t) b] > 1.0e-4f)
         {
+            const bool heard = ! anySolo || bp.solo;
+            anyHarmonics = anyHarmonics || heard;
             float e = excite[(size_t) b], m = exciteMix[(size_t) b];
-            float* x[2] = { buf.getWritePointer (0), buf.getWritePointer (channels > 1 ? 1 : 0) };
+            const float* x[2] = { buf.getReadPointer (0), buf.getReadPointer (channels > 1 ? 1 : 0) };
+            float* harm[2] = { harmonicsBuffer.getWritePointer (0), harmonicsBuffer.getWritePointer (1) };
             double env = ex.env;
+            auto envCh = ex.envCh;
             const float fadeStep = (float) (1.0 / (0.015 * osFs)); // a change of tone: 15 ms out, swap, 15 ms in
             const auto* shape = &halation::toneShape (ex.tone);
-            for (int i = 0; i < upN; ++i)
+            for (int s = 0, i = 0; i < upN; ++s)
             {
-                e += (target - e) * osSmooth;
-                m += (mixTarget - m) * osSmooth;
-                if (ex.tone != bp.tone)
+                followSplits (splitsAt[(size_t) s], osFs);
+                for (const int end = juce::jmin (upN, i + glideStep); i < end; ++i)
                 {
-                    ex.fade -= fadeStep;
-                    if (ex.fade <= 0.0f) { ex.fade = 0.0f; ex.setTone (bp.tone); shape = &halation::toneShape (ex.tone); }
-                }
-                else if (ex.fade < 1.0f) ex.fade = juce::jmin (1.0f, ex.fade + fadeStep);
+                    e += (target - e) * osSmooth;
+                    m += (mixTarget - m) * osSmooth;
+                    if (ex.tone != bp.tone)
+                    {
+                        ex.fade -= fadeStep;
+                        if (ex.fade <= 0.0f) { ex.fade = 0.0f; ex.setTone (bp.tone); shape = &halation::toneShape (ex.tone); }
+                    }
+                    else if (ex.fade < 1.0f) ex.fade = juce::jmin (1.0f, ex.fade + fadeStep);
 
-                float level = 0.0f;
-                for (int ch = 0; ch < channels; ++ch) level = juce::jmax (level, std::abs (x[ch][i]));
-                env = level + (level > env ? exciteAttack : exciteRelease) * (env - level);
-                const float ref = juce::jmax ((float) env, halation::exciteFloor), amount = e * m * ex.fade;
-                for (int ch = 0; ch < channels; ++ch)
-                {
-                    const float h = ref * shape->harmonics (x[ch][i] / ref, e);
-                    x[ch][i] += amount * ex.filter (ch, h);
+                    float level = 0.0f;
+                    for (int ch = 0; ch < channels; ++ch)
+                    {
+                        const double a = std::abs (x[ch][i]);
+                        envCh[(size_t) ch] = a + (a > envCh[(size_t) ch] ? exciteAttack : exciteRelease) * (envCh[(size_t) ch] - a);
+                        level = juce::jmax (level, (float) a);
+                    }
+                    env = level + (level > env ? exciteAttack : exciteRelease) * (env - level);
+                    const float ref = juce::jmax ((float) env, halation::exciteFloor), amount = e * m * ex.fade;
+                    for (int ch = 0; ch < channels; ++ch)
+                    {
+                        // This channel's share of the curve's DC: all of it at the band's level, none when it's silent
+                        const double own = env > 0.0 ? juce::jmin (1.0, envCh[(size_t) ch] / env) : 0.0;
+                        const float h = ref * shape->harmonics (x[ch][i] / ref, e, (float) (own * own));
+                        const float y = amount * ex.filter (ch, h);
+                        if (heard) harm[ch][i] += y;
+                    }
                 }
             }
             ex.env = env < 1.0e-12 ? 0.0 : env;
+            for (auto& v : envCh) if (v < 1.0e-12) v = 0.0;
+            ex.envCh = envCh;
             ex.snap();
             excite[(size_t) b] = e;
             exciteMix[(size_t) b] = m;
@@ -283,20 +405,40 @@ void HalationAudioProcessor::processChunk (float* const* io, int channels, int n
             ex.reset();
             if (ex.tone != bp.tone) ex.setTone (bp.tone);
             ex.fade = 1.0f;
+            followSplits (splitsAt[(size_t) steps - 1], osFs);
         }
     }
 
-    // 4) Sum: the soloed bands alone, or every band blended with the dry signal by Mix
-    bool anySolo = false;
-    for (const auto& bp : p.bands) anySolo = anySolo || bp.solo;
+    // 4) The harmonics, low-passed under the host's Nyquist (while there are some, and once more to ring out)
+    if (anyHarmonics || antiAliasRunning)
+    {
+        for (int ch = 0; ch < channels; ++ch)
+        {
+            float* hh = harmonicsBuffer.getWritePointer (ch);
+            auto& chain = antiAlias[(size_t) ch];
+            for (int i = 0; i < upN; ++i)
+            {
+                float v = hh[i];
+                for (auto& f : chain) v = f.process (v);
+                hh[i] = v;
+            }
+            for (auto& f : chain) f.snapDenormals();
+        }
+        if (! anyHarmonics)
+            for (auto& chain : antiAlias) for (auto& f : chain) f.reset();
+        antiAliasRunning = anyHarmonics;
+    }
+
+    // 5) Sum: the soloed bands alone, or every band blended with the dry signal by Mix
     for (int ch = 0; ch < channels; ++ch)
     {
         float* y = up.getChannelPointer ((size_t) ch);
         const float* dry = dryBuffer.getReadPointer (ch);
+        const float* hh = harmonicsBuffer.getReadPointer (ch);
         float m = mix;
         for (int i = 0; i < upN; ++i)
         {
-            float wet = 0.0f;
+            float wet = hh[i];
             for (int b = 0; b < halation::numBands; ++b)
                 if (! anySolo || p.bands[(size_t) b].solo)
                     wet += bandBuffers[(size_t) b].getReadPointer (ch)[i];
@@ -306,7 +448,7 @@ void HalationAudioProcessor::processChunk (float* const* io, int channels, int n
         if (ch == channels - 1) mix = m;
     }
 
-    // 5) Back down, output level
+    // 6) Back down, output level
     oversampler->processSamplesDown (block);
     const float outTarget = juce::Decibels::decibelsToGain (p.outputDb);
     float outPeak = 0.0f;
