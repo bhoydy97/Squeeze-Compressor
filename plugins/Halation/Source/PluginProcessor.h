@@ -35,6 +35,9 @@ public:
     bool isBusesLayoutSupported (const BusesLayout& layouts) const override;
     void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
     using AudioProcessor::processBlock;
+    // Bypassed (the host's bypass switch): the input, delayed by the reported latency, so the track stays in time
+    void processBlockBypassed (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
+    using AudioProcessor::processBlockBypassed;
 
     juce::AudioProcessorEditor* createEditor() override;
     bool hasEditor() const override { return true; }
@@ -74,11 +77,14 @@ public:
     std::atomic<float> meterInputPeak { 0.0f }, meterOutputPeak { 0.0f };
 
     static constexpr int oversamplingStages = 2; // 4x, so the exciters' harmonics don't alias
+    static constexpr int glideStep = 32;         // oversampled samples between filter updates while a split glides
+    static constexpr int antiAliasOrder = 16;    // the low-pass on the harmonics before coming back down from 4x
 
 private:
     void setPresetName (const juce::String& name);
     void restoreState (const juce::ValueTree& state);
     void processChunk (float* const* io, int numChannels, int numSamples, const halation::Params& p);
+    void setSplits (const halation::Splits& s);
 
     std::unique_ptr<juce::dsp::Oversampling<float>> oversampler;
     double fs = 44100.0, osFs = 176400.0;
@@ -91,16 +97,22 @@ private:
     juce::SpinLock presetLock;
 
     std::array<halation::Crossover, 2> crossover;
-    halation::Splits currentSplits { -1.0f, -1.0f, -1.0f };
+    halation::Splits currentSplits { -1.0f, -1.0f, -1.0f }, targetSplits;
+    std::vector<halation::Splits> splitsAt; // the splits in force for each glideStep of the current chunk
     std::array<squeeze::Compressor, halation::numBands> compressors;
     std::array<juce::AudioBuffer<float>, halation::numBands> bandBuffers;
-    juce::AudioBuffer<float> dryBuffer;
+    juce::AudioBuffer<float> dryBuffer, harmonicsBuffer;
+    std::array<std::array<lbaudio::dsp::Biquad, antiAliasOrder / 2>, 2> antiAlias;
+    bool antiAliasRunning = false;
+    juce::AudioBuffer<float> bypassDelay; // the input, kept the latency back, for the bypassed sound
+    int bypassPos = 0;
     std::array<halation::Exciter, halation::numBands> exciters;
     double exciteAttack = 0.0, exciteRelease = 0.0;
 
     // Smoothed values
     float inGain = 1.0f, outGain = 1.0f, mix = 1.0f, smoothCoeff = 0.001f;
     std::array<float, halation::numBands> excite {}, exciteMix {};
+    std::array<float, halation::numBands> compThreshold {}, compRatio {}; // glide, so a moved knob can't jump the gain
 
     std::atomic<float>* pSplit[3] {};
     std::atomic<float>* pInput = nullptr; std::atomic<float>* pOutput = nullptr; std::atomic<float>* pMix = nullptr;

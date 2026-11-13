@@ -47,6 +47,270 @@ Gen beat (float db)
     };
 }
 
+//==============================================================================
+// Checks that reproduce an outside lab measurement (THE_LAB 1.3.2, Halation 1.2.2) with the settings it used:
+// every knob moves smoothly and does something, high notes don't alias, one channel doesn't leak into the other,
+// big buffers and high sample rates render the same, and the plugin's bypass keeps its latency.
+
+void labSettings (Harness& h)
+{
+    defaults (h.proc);
+    const std::pair<const char*, const char*> values[] = {
+        { "Low Split", "120" }, { "Mid Split", "1000" }, { "High Split", "6000" },
+        { "Low Threshold", "-27.1" }, { "Low Ratio", "2.0" }, { "Low Attack", "10" }, { "Low Release", "120" },
+        { "Low Makeup", "0" }, { "Low Excite", "53" }, { "Low Excite Tone", "Octave" }, { "Low Excite Mix", "100" },
+        { "Low Mid Threshold", "-31.9" }, { "Low Mid Ratio", "5.6" }, { "Low Mid Attack", "0.32" }, { "Low Mid Release", "9.1" },
+        { "Low Mid Makeup", "14.5" }, { "Low Mid Excite", "56" }, { "Low Mid Excite Tone", "Tape" }, { "Low Mid Excite Mix", "41" },
+        { "High Mid Threshold", "-54.9" }, { "High Mid Ratio", "2.0" }, { "High Mid Attack", "0.10" }, { "High Mid Release", "5.0" },
+        { "High Mid Makeup", "8.8" }, { "High Mid Excite", "54" }, { "High Mid Excite Tone", "Bright" }, { "High Mid Excite Mix", "28" },
+        { "High Threshold", "-27.6" }, { "High Ratio", "2.5" }, { "High Attack", "0.51" }, { "High Release", "588" },
+        { "High Makeup", "8.6" }, { "High Excite", "55" }, { "High Excite Tone", "Warm" }, { "High Excite Mix", "100" },
+        { "Input", "-8.4" }, { "Output", "8.4" }, { "Mix", "62" } };
+    for (const auto& [name, value] : values) h.set (name, value);
+    h.apply();
+}
+
+// Plays 'signal' for 'total' samples, setting the parameter to each value at its sample position.
+std::vector<float> playWithMoves (Harness& h, Gen signal, int total, juce::AudioProcessorParameter* p,
+                                  const std::vector<std::pair<int, float>>& moves)
+{
+    std::vector<float> out;
+    int pos = 0;
+    size_t next = 0;
+    while (pos < total)
+    {
+        const int until = next < moves.size() ? juce::jmin (total, moves[next].first) : total;
+        if (until > pos)
+        {
+            const auto part = h.run (until - pos, [signal, pos] (int i) { return signal (pos + i); });
+            out.insert (out.end(), part.begin(), part.end());
+            pos = until;
+        }
+        if (next < moves.size() && pos >= moves[next].first) p->setValueNotifyingHost (moves[next++].second);
+    }
+    return out;
+}
+
+// Spectrum of the 65536 samples after 'from', Blackman-Harris windowed: magnitudes per bin (bin = rate / 65536 Hz).
+std::vector<float> spectrum (const std::vector<float>& v, size_t from)
+{
+    constexpr int order = 16, n = 1 << order;
+    juce::dsp::FFT fft (order);
+    std::vector<float> data (2 * (size_t) n, 0.0f);
+    for (int i = 0; i < n; ++i)
+    {
+        const double t = 2.0 * juce::MathConstants<double>::pi * i / (n - 1);
+        const double w = 0.35875 - 0.48829 * std::cos (t) + 0.14128 * std::cos (2 * t) - 0.01168 * std::cos (3 * t);
+        data[(size_t) i] = (float) (w * v[from + (size_t) i]);
+    }
+    fft.performFrequencyOnlyForwardTransform (data.data());
+    data.resize ((size_t) n / 2);
+    return data;
+}
+
+// The loudest component that isn't the tone or one of its harmonics below Nyquist (dB re the tone, and where).
+std::pair<float, double> worstSpur (const std::vector<float>& mag, int toneBin, double rate)
+{
+    const int n = (int) mag.size() * 2;
+    auto isHarmonic = [&] (int bin)
+    {
+        if (std::abs (bin - toneBin) <= toneBin / 20 + 4) return true; // the tone and its own sidebands (gain riding)
+        for (int k = 2; (long long) k * toneBin < n / 2; ++k)
+            if (std::abs (bin - k * toneBin) <= 4) return true;
+        return false;
+    };
+    float tone = 0.0f;
+    for (int b = toneBin - 3; b <= toneBin + 3; ++b) tone = std::max (tone, mag[(size_t) b]);
+    float worst = 0.0f; int at = 0;
+    for (int b = 10; b < (int) mag.size(); ++b)
+        if (! isHarmonic (b) && mag[(size_t) b] > worst) { worst = mag[(size_t) b]; at = b; }
+    return { toDb (worst / tone), at * rate / n };
+}
+
+// Renders 'seconds' of a signal at a sample rate and buffer size of its own (prepared for it), left channel out.
+std::vector<float> renderAt (juce::AudioProcessor& proc, double rate, int block, std::function<float (double)> signalAtTime, double seconds)
+{
+    proc.releaseResources();
+    proc.setRateAndBufferSizeDetails (rate, block);
+    proc.prepareToPlay (rate, block);
+    const int total = (int) (rate * seconds);
+    juce::AudioBuffer<float> buffer (2, block);
+    juce::MidiBuffer midi;
+    std::vector<float> out;
+    for (int start = 0; start < total; start += block)
+    {
+        const int len = juce::jmin (block, total - start);
+        buffer.setSize (2, len, false, false, true);
+        for (int i = 0; i < len; ++i)
+            for (int ch = 0; ch < 2; ++ch) buffer.setSample (ch, i, signalAtTime ((start + i) / rate));
+        proc.processBlock (buffer, midi);
+        for (int i = 0; i < len; ++i) out.push_back (buffer.getSample (0, i));
+    }
+    return out;
+}
+
+void labFindings (juce::AudioProcessor& proc)
+{
+    Harness h (proc);
+    const auto tonePeak = fromDb (-12.0f);
+    const Gen tone = sine (-12.0f, 999.76f);
+    const Gen threeTones = mixOf (mixOf (sine (-18.0f, 100.0f), sine (-18.0f, 999.76f)), sine (-18.0f, 8000.0f));
+
+    // --- Knob moves: every continuous control, jumped 30 % four times while a tone plays -------------------------
+    {
+        // Clicks: what the move adds above 5 kHz in the 30 ms after each jump, over what the new setting leaves
+        // there for good (measured later), re the tone's peak
+        lbaudio::dsp::Biquad hp[4];
+        juce::StringArray clicky, inert;
+        float worstClick = -200.0f;
+        juce::String worstName;
+        const int total = (int) (sampleRate * 2.0);
+        const int jumpAt[4] = { 24064, 38400, 52736, 67072 }; // on block boundaries, as a host moves them
+        for (auto* p : proc.getParameters())
+        {
+            if (p->isDiscrete() || p->isBoolean() || ! p->isAutomatable()) continue;
+            const auto name = p->getName (64);
+            if (name.isEmpty() || name.containsIgnoreCase ("bypass")) continue;
+
+            labSettings (h);
+            const float v0 = p->getValue(), v1 = v0 <= 0.7f ? v0 + 0.3f : v0 - 0.3f;
+            const std::vector<std::pair<int, float>> moves { { jumpAt[0], v1 }, { jumpAt[1], v0 }, { jumpAt[2], v1 }, { jumpAt[3], v0 } };
+            float clickDb = -200.0f, changeDb = -200.0f;
+            for (int pass = 0; pass < 2; ++pass)
+            {
+                const Gen signal = pass == 0 ? tone : threeTones;
+                labSettings (h);
+                const auto still = playWithMoves (h, signal, total, p, {});
+                labSettings (h);
+                const auto moved = playWithMoves (h, signal, total, p, moves);
+                std::vector<float> diff (still.size());
+                double sq = 0.0, ref = 0.0;
+                for (size_t i = 0; i < diff.size(); ++i)
+                {
+                    diff[i] = moved[i] - still[i];
+                    if (i >= (size_t) jumpAt[0]) { sq += (double) diff[i] * diff[i]; ref += (double) still[i] * still[i]; }
+                }
+                changeDb = std::max (changeDb, (float) (10.0 * std::log10 ((sq + 1.0e-30) / (ref + 1.0e-30))));
+                if (pass == 0)
+                {
+                    const auto qs = lbaudio::dsp::butterworthQs (8);
+                    for (int s = 0; s < 4; ++s) { hp[s].reset(); hp[s].c = lbaudio::dsp::design (lbaudio::dsp::Shape::HighPass, 5000.0, 0.0, qs[(size_t) s], sampleRate); }
+                    for (auto& v : diff) for (auto& f : hp) v = f.process (v);
+                    for (int j = 0; j < 4; ++j)
+                    {
+                        const size_t a = (size_t) jumpAt[j], w = (size_t) (0.03 * sampleRate);
+                        float burst = 0.0f, after = 0.0f;
+                        for (size_t i = a; i < a + w; ++i) burst = std::max (burst, std::abs (diff[i]));
+                        const size_t end = j < 3 ? (size_t) jumpAt[j + 1] : diff.size();
+                        for (size_t i = a + (size_t) (0.1 * sampleRate); i < end; ++i) after = std::max (after, std::abs (diff[i]));
+                        clickDb = std::max (clickDb, toDb (std::max (0.0f, burst - after) / tonePeak));
+                    }
+                }
+            }
+            if (clickDb > -35.0f) clicky.add (name + " " + fmt (clickDb, 1) + " dB");
+            if (changeDb < -120.0f) inert.add (name);
+            if (clickDb > worstClick) { worstClick = clickDb; worstName = name; }
+        }
+        check (clicky.isEmpty(), "Lab settings: no control clicks when it jumps 30 % (each under -35 dB)",
+               clicky.isEmpty() ? "loudest " + worstName + " " + fmt (worstClick, 1) + " dB" : clicky.joinIntoString (", "));
+        check (inert.isEmpty(), "Lab settings: every control changes the sound of a tone or three tones",
+               inert.isEmpty() ? juce::String ("all do") : "no change from: " + inert.joinIntoString (", "));
+    }
+
+    // --- High notes: harmonics above Nyquist mustn't fold back ---------------------------------------------------
+    {
+        juce::String detail;
+        float worst = -200.0f;
+        for (int bin : { 1365, 8601, 13653 }) // 1.0, 6.3 and 10 kHz on odd bins, as the lab does
+        {
+            labSettings (h);
+            const float hz = (float) (bin * sampleRate / 65536.0);
+            const auto out = h.run ((int) sampleRate + 65536, sine (-6.0f, hz));
+            const auto [spur, at] = worstSpur (spectrum (out, (size_t) sampleRate), bin, sampleRate);
+            detail << fmt (hz / 1000.0f, 1) << " kHz: " << fmt (spur, 1) << " dB at " << fmt ((float) at / 1000.0f, 1) << " kHz; ";
+            worst = std::max (worst, spur);
+        }
+        check (worst < -90.0f, "Lab settings: no aliasing from high notes (worst spur under -90 dB)", detail);
+    }
+
+    // --- Stereo: one channel doesn't leak into the other ---------------------------------------------------------
+    {
+        labSettings (h);
+        const auto leftOnly = h.runStereo ((int) sampleRate * 2, noise (-12.0f, 3), silence());
+        const float leak = rmsDb (leftOnly[1], (size_t) sampleRate) - rmsDb (leftOnly[0], (size_t) sampleRate);
+        labSettings (h);
+        const auto both = h.runStereo ((int) sampleRate, noise (-12.0f, 3), noise (-12.0f, 3));
+        float lr = 0.0f;
+        for (size_t i = 0; i < both[0].size(); ++i) lr = std::max (lr, std::abs (both[0][i] - both[1][i]));
+        check (leak < -120.0f && lr == 0.0f, "Lab settings: left-only in gives nothing on the right, and L and R match exactly",
+               "right " + fmt (leak, 1) + " dB re left; L-R " + juce::String (lr));
+    }
+
+    // --- Big buffers and high sample rates ----------------------------------------------------------------------
+    {
+        labSettings (h);
+        auto music = [] (double t)
+        {
+            const double pi2 = 2.0 * juce::MathConstants<double>::pi;
+            return (float) (0.25 * std::sin (pi2 * 110.0 * t) + 0.15 * std::sin (pi2 * 1234.5 * t) + 0.1 * std::sin (pi2 * 7000.0 * t))
+                   * (float) (0.6 + 0.4 * std::sin (pi2 * 1.3 * t));
+        };
+        const auto ref = renderAt (proc, sampleRate, 512, music, 2.0);
+        juce::String detail;
+        bool ok = true;
+        for (int block : { 2048, 4096, 8192 })
+        {
+            const auto out = renderAt (proc, sampleRate, block, music, 2.0);
+            std::vector<float> d (ref.size());
+            bool finite = true;
+            for (size_t i = 0; i < d.size(); ++i) { d[i] = out[i] - ref[i]; finite = finite && std::isfinite (out[i]); }
+            const float diff = rmsDb (d) - rmsDb (ref);
+            ok = ok && finite && diff < -120.0f;
+            detail << block << ": " << fmt (diff, 1) << " dB; ";
+        }
+        {
+            // A 0-sample buffer between ordinary ones
+            proc.releaseResources();
+            proc.setRateAndBufferSizeDetails (sampleRate, 512);
+            proc.prepareToPlay (sampleRate, 512);
+            juce::AudioBuffer<float> empty (2, 0);
+            juce::MidiBuffer midi;
+            proc.processBlock (empty, midi);
+        }
+        const float refLevel = rmsDb (ref);
+        for (double rate : { 176400.0, 192000.0 })
+        {
+            const auto out = renderAt (proc, rate, 512, music, 1.0);
+            bool finite = true;
+            for (auto v : out) finite = finite && std::isfinite (v);
+            const float level = rmsDb (out, (size_t) (rate * 0.25));
+            ok = ok && finite && std::abs (level - refLevel) < 6.0f;
+            detail << (int) (rate / 1000.0) << " kHz level " << fmt (level - refLevel, 2) << " dB; ";
+        }
+        check (ok, "Lab settings: 2048-8192 sample buffers render the same as 512, and 176.4/192 kHz stay level", detail);
+        h.prepare();
+    }
+
+    // --- The plugin's own bypass keeps the latency, so a bypassed track stays in time ----------------------------
+    {
+        labSettings (h);
+        juce::AudioBuffer<float> buffer (2, blockSize);
+        juce::MidiBuffer midi;
+        int arrival = -1;
+        for (int b = 0; b < 4 && arrival < 0; ++b)
+        {
+            buffer.clear();
+            if (b == 0) { buffer.setSample (0, 10, 1.0f); buffer.setSample (1, 10, 1.0f); }
+            proc.processBlockBypassed (buffer, midi);
+            for (int i = 0; i < blockSize && arrival < 0; ++i)
+                if (std::abs (buffer.getSample (0, i)) > 0.5f) arrival = b * blockSize + i - 10;
+        }
+        check (arrival == proc.getLatencySamples(), "Bypassed: the input arrives after the reported latency, as when processing",
+               juce::String (arrival) + " samples, latency " + juce::String (proc.getLatencySamples()));
+    }
+    labSettings (h);
+}
+
 void runSuite (juce::AudioProcessor& proc)
 {
     const int reportedEarly = proc.getLatencySamples();
@@ -382,6 +646,9 @@ void runSuite (juce::AudioProcessor& proc)
         halation->applyFactoryPreset (0);
         check (halation->getPresetName() == "Init" && h.text ("Low Split") == "120 Hz", "Init preset resets everything", halation->getPresetName());
     }
+
+    // --- An outside lab's findings, with its settings ------------------------------------------------------------
+    labFindings (proc);
 }
 } // namespace
 
