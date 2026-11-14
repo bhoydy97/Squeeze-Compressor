@@ -1,0 +1,44 @@
+name: Windows check (temporary)
+
+# Builds Halation and its tests on Windows and runs them, hosted as a DAW would host the VST3, then pluginval:
+# to find a crash an outside lab saw on Windows only. Runs on pushes to halation-* branches.
+
+on:
+  push:
+    branches: ['halation-*']
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DLBAUDIO_BUILD_TESTS=ON -DLBAUDIO_LTO=OFF -DLBAUDIO_PLUGINS=Halation
+
+      - name: Build
+        run: cmake --build build --config Release --parallel 4
+
+      - name: Halation tests (hosted VST3, then the built-in processor)
+        shell: bash
+        run: |
+          set +e
+          build/plugins/Halation/HalationTests_artefacts/Release/HalationTests.exe build/plugins/Halation/Halation_artefacts/Release/VST3/Halation.vst3
+          code=$?
+          echo "HalationTests exit code: $code"
+          exit $code
+
+      - name: pluginval, in a separate process (as a lab or DAW scanner runs it)
+        if: always()
+        shell: bash
+        run: |
+          curl -sSL -o pluginval.zip https://github.com/Tracktion/pluginval/releases/download/v1.0.4/pluginval_Windows.zip
+          7z x -y pluginval.zip -opluginval > /dev/null
+          set +e
+          ./pluginval/pluginval.exe --strictness-level 10 --timeout-ms 600000 build/plugins/Halation/Halation_artefacts/Release/VST3/Halation.vst3
+          code=$?
+          echo "pluginval exit code: $code"
+          exit $code
