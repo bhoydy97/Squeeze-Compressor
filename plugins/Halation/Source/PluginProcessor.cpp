@@ -56,6 +56,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout HalationAudioProcessor::crea
     layout.add (floatParam (ids::input, "Input", juce::NormalisableRange<float> (-24.0f, 24.0f, 0.1f), 0.0f, formatSignedDb, parseNumber));
     layout.add (floatParam (ids::output, "Output", juce::NormalisableRange<float> (-24.0f, 24.0f, 0.1f), 0.0f, formatSignedDb, parseNumber));
     layout.add (floatParam (ids::mix, "Mix", juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 100.0f, formatPercent, parseNumber));
+    // Added in 1.2.3, last so every other parameter keeps its place. On for a new copy; off for a session saved
+    // before it existed (see restoreState), so old mixes sound as they did.
+    layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { ids::ceiling, 1 }, "Ceiling", true,
+                                                            juce::AudioParameterBoolAttributes().withStringFromValueFunction (formatOnOff)));
     return layout;
 }
 
@@ -71,16 +75,19 @@ HalationAudioProcessor::HalationAudioProcessor()
     pInput = apvts.getRawParameterValue (halation::ids::input);
     pOutput = apvts.getRawParameterValue (halation::ids::output);
     pMix = apvts.getRawParameterValue (halation::ids::mix);
+    pCeiling = apvts.getRawParameterValue (halation::ids::ceiling);
     for (int b = 0; b < halation::numBands; ++b)
         for (int k = 0; k < halation::ids::numBandControls; ++k)
             pBand[(size_t) b][(size_t) k] = apvts.getRawParameterValue (halation::ids::band (b, halation::ids::bandControls[k]));
     for (auto& m : meterReduction) m.store (0.0f);
     for (int t = 0; t < halation::numTones; ++t) halation::toneShape (t); // build the tone tables now, not on the audio thread
 
-    // Report latency from the start: hosts may ask before prepareToPlay. It doesn't depend on the sample rate.
+    // Report latency from the start: hosts may ask before prepareToPlay. It's the oversampling filters' delay plus
+    // the ceiling's look-ahead (there whether the ceiling is on or off, so switching it never moves the timing);
+    // the look-ahead is 2 ms, so this is it at 48 kHz, and prepareToPlay sets it again for the real sample rate.
     auto probe = makeOversampler (2);
     probe->initProcessing (512);
-    setLatencySamples (juce::roundToInt (probe->getLatencyInSamples()));
+    setLatencySamples (juce::roundToInt (probe->getLatencyInSamples()) + halation::ceilingLatency (48000.0));
 }
 
 halation::Params HalationAudioProcessor::currentParams() const
@@ -97,6 +104,7 @@ halation::Params HalationAudioProcessor::currentParams() const
         band.tone = juce::jlimit (0, halation::numTones - 1, juce::roundToInt (v[8]->load())); band.exciteMix = v[9]->load() * 0.01f;
     }
     p.inputDb = pInput->load(); p.outputDb = pOutput->load(); p.mix = pMix->load() * 0.01f;
+    p.ceiling = pCeiling->load() > 0.5f;
     return p;
 }
 
@@ -105,11 +113,15 @@ void HalationAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlo
     fs = sampleRate;
     osFs = fs * (1 << oversamplingStages);
     maxChunk = juce::jmax (16, samplesPerBlock);
-    const int channels = juce::jmax (1, juce::jmin (2, getTotalNumOutputChannels()));
-
-    oversampler = makeOversampler (channels);
+    // Always ready for two channels, whatever the layout is now: a host may switch a mono track to stereo without
+    // preparing again, and an oversampler set up for one channel would then write past its buffers
+    oversampler = makeOversampler (2);
     oversampler->initProcessing ((size_t) maxChunk);
-    setLatencySamples (juce::roundToInt (oversampler->getLatencyInSamples()));
+    setLatencySamples (juce::roundToInt (oversampler->getLatencyInSamples()) + halation::ceilingLatency (fs));
+    ceilingLimiter.prepare (fs);
+    ceilingLimiter.setParams ({ 0.0f, halation::ceilingDb, halation::ceilingReleaseMs, true });
+    ceilingDelay.setSize (2, halation::ceilingLatency (fs));
+    ceilingDry.setSize (2, maxChunk);
 
     const int osMax = maxChunk * (1 << oversamplingStages);
     for (auto& b : bandBuffers) b.setSize (2, osMax);
@@ -138,6 +150,7 @@ void HalationAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlo
     inGain = juce::Decibels::decibelsToGain (p.inputDb);
     outGain = juce::Decibels::decibelsToGain (p.outputDb);
     mix = p.mix;
+    ceilingAmount = p.ceiling ? 1.0f : 0.0f;
     for (int b = 0; b < halation::numBands; ++b)
     {
         excite[(size_t) b] = p.bands[(size_t) b].excite;
@@ -159,6 +172,9 @@ void HalationAudioProcessor::reset()
     for (auto& e : exciters) e.reset();
     for (auto& chain : antiAlias) for (auto& f : chain) f.reset();
     antiAliasRunning = false;
+    ceilingLimiter.reset();
+    ceilingDelay.clear();
+    ceilingPos = 0;
     bypassDelay.clear();
     bypassPos = 0;
 }
@@ -235,6 +251,39 @@ void HalationAudioProcessor::processBlockBypassed (juce::AudioBuffer<float>& buf
         }
     }
     bypassPos = (bypassPos + n) % len;
+}
+
+// The limiter always runs, so the latency is the same on or off; with the Ceiling off the output is the same signal
+// from a plain delay as long, and switching fades between the two (20 ms) instead of stepping.
+void HalationAudioProcessor::applyCeiling (float* const* io, int numChannels, int numSamples, bool on)
+{
+    const int len = ceilingDelay.getNumSamples();
+    if (len == 0) return;
+    const int channels = juce::jmin (2, numChannels);
+    for (int ch = 0; ch < channels; ++ch)
+    {
+        float* d = ceilingDelay.getWritePointer (ch);
+        float* s = ceilingDry.getWritePointer (ch);
+        int pos = ceilingPos;
+        for (int i = 0; i < numSamples; ++i) { s[i] = d[pos]; d[pos] = io[ch][i]; if (++pos == len) pos = 0; }
+    }
+    ceilingPos = (ceilingPos + numSamples) % len;
+    ceilingLimiter.process (io[0], channels > 1 ? io[1] : nullptr, numSamples);
+
+    const float target = on ? 1.0f : 0.0f;
+    float a = ceilingAmount;
+    if (juce::exactlyEqual (a, 1.0f) && on) return;
+    for (int i = 0; i < numSamples; ++i)
+    {
+        a += (target - a) * smoothCoeff;
+        if (std::abs (target - a) < 1.0e-6f) a = target;
+        for (int ch = 0; ch < channels; ++ch)
+        {
+            const float dry = ceilingDry.getReadPointer (ch)[i];
+            io[ch][i] = a >= 1.0f ? io[ch][i] : (a <= 0.0f ? dry : dry + a * (io[ch][i] - dry));
+        }
+    }
+    ceilingAmount = a;
 }
 
 void HalationAudioProcessor::processChunk (float* const* io, int channels, int n, const halation::Params& p)
@@ -451,16 +500,21 @@ void HalationAudioProcessor::processChunk (float* const* io, int channels, int n
     // 6) Back down, output level
     oversampler->processSamplesDown (block);
     const float outTarget = juce::Decibels::decibelsToGain (p.outputDb);
-    float outPeak = 0.0f;
     {
         float g = outGain;
         for (int i = 0; i < n; ++i)
         {
             g += (outTarget - g) * smoothCoeff;
-            for (int ch = 0; ch < channels; ++ch) { io[ch][i] *= g; outPeak = juce::jmax (outPeak, std::abs (io[ch][i])); }
+            for (int ch = 0; ch < channels; ++ch) io[ch][i] *= g;
         }
         outGain = g;
     }
+
+    // 7) The ceiling
+    applyCeiling (io, channels, n, p.ceiling);
+    float outPeak = 0.0f;
+    for (int ch = 0; ch < channels; ++ch)
+        for (int i = 0; i < n; ++i) outPeak = juce::jmax (outPeak, std::abs (io[ch][i]));
     scopeOut.push (io[0], channels > 1 ? io[1] : nullptr, n);
     lbaudio::ui::storeMax (meterInputPeak, inPeak);
     lbaudio::ui::storeMax (meterOutputPeak, outPeak);
@@ -568,6 +622,9 @@ void HalationAudioProcessor::setStateInformation (const void* data, int size)
 
 void HalationAudioProcessor::restoreState (const juce::ValueTree& state)
 {
+    // A session or preset saved before the Ceiling existed (up to 1.2.2) keeps its sound: the ceiling stays off.
+    // (Asked before replaceState, which adds whatever the state is missing to the same tree.)
+    const bool savedBeforeCeiling = ! state.getChildWithProperty ("id", halation::ids::ceiling).isValid();
     apvts.replaceState (state);
     // The value tree skips a parameter whose stored value already reads the same (a switch sitting at 0.3 reads
     // off, like a stored 0), so line every parameter up with the state exactly
@@ -580,6 +637,9 @@ void HalationAudioProcessor::restoreState (const juce::ValueTree& state)
             if (std::abs (ranged->getValue() - target) > 1.0e-6f)
                 ranged->setValueNotifyingHost (target);
         }
+    if (savedBeforeCeiling)
+        if (auto* ceiling = apvts.getParameter (halation::ids::ceiling))
+            ceiling->setValueNotifyingHost (0.0f);
 }
 
 juce::AudioProcessorEditor* HalationAudioProcessor::createEditor() { return new HalationAudioProcessorEditor (*this); }

@@ -649,8 +649,10 @@ HalationAudioProcessorEditor::HalationAudioProcessorEditor (HalationAudioProcess
         addAndMakeVisible (*strips[(size_t) b]);
     }
     for (juce::Component* c : { (juce::Component*) &presets, (juce::Component*) &spectrumView, (juce::Component*) &input,
-                                (juce::Component*) &output, (juce::Component*) &mix, (juce::Component*) &inMeter, (juce::Component*) &outMeter })
+                                (juce::Component*) &output, (juce::Component*) &mix, (juce::Component*) &inMeter, (juce::Component*) &outMeter,
+                                (juce::Component*) &ceiling })
         addAndMakeVisible (c);
+    ceiling.button.setTooltip ("Holds the output at -1 dB true peak with LBAudio Ceiling's limiter; anything under that passes untouched");
 
     {
         // A small tile of fine, faint grain: light and dark specks at random
@@ -787,6 +789,8 @@ void HalationAudioProcessorEditor::resized()
     inMeter.setBounds (meters.removeFromLeft (32));
     outMeter.setBounds (meters);
     c.removeFromRight (4);
+    ceiling.setBounds (c.removeFromBottom (26).reduced (2, 0));
+    c.removeFromBottom (6);
     const int h = c.getHeight() / 3;
     for (auto* k : { &input, &output, &mix })
         k->slider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, juce::jmin (90, c.getWidth() - 8), 20);

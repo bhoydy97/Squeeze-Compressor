@@ -15,7 +15,7 @@ int expectedLatency()
     juce::dsp::Oversampling<float> os (2, (size_t) HalationAudioProcessor::oversamplingStages,
                                        juce::dsp::Oversampling<float>::filterHalfBandFIREquiripple, true, true);
     os.initProcessing (512);
-    return juce::roundToInt (os.getLatencyInSamples());
+    return juce::roundToInt (os.getLatencyInSamples()) + halation::ceilingLatency (sampleRate);
 }
 
 void defaults (juce::AudioProcessor& proc)
@@ -147,6 +147,183 @@ std::vector<float> renderAt (juce::AudioProcessor& proc, double rate, int block,
         for (int i = 0; i < len; ++i) out.push_back (buffer.getSample (0, i));
     }
     return out;
+}
+
+// True peak (dBTP) of v[from..]: the larger of the samples and 8 points between each pair, interpolated with a
+// 64-tap Blackman-windowed sinc (about what a converter's reconstruction gives)
+float truePeakDb (const std::vector<float>& v, size_t from)
+{
+    static constexpr int half = 32, os = 8; // static: MSVC wants a capture for a plain local in the lambda below
+    static const auto taps = []
+    {
+        std::vector<std::vector<double>> t ((size_t) os, std::vector<double> (2 * half));
+        const double pi = juce::MathConstants<double>::pi;
+        for (int k = 0; k < os; ++k)
+            for (int j = 0; j < 2 * half; ++j)
+            {
+                const double x = (j - half + 1) - (double) k / os;
+                const double sinc = std::abs (x) < 1.0e-12 ? 1.0 : std::sin (pi * x) / (pi * x);
+                const double w = 0.42 + 0.5 * std::cos (pi * x / half) + 0.08 * std::cos (2.0 * pi * x / half);
+                t[(size_t) k][(size_t) j] = sinc * w;
+            }
+        return t;
+    }();
+    double peak = 0.0;
+    for (size_t n = from + half; n + half < v.size(); ++n)
+        for (int k = 0; k < os; ++k)
+        {
+            double s = 0.0;
+            for (int j = 0; j < 2 * half; ++j) s += taps[(size_t) k][(size_t) j] * v[n - half + 1 + (size_t) j];
+            peak = std::max (peak, std::abs (s));
+        }
+    return toDb ((float) peak);
+}
+
+//==============================================================================
+// The output ceiling (1.2.3): holds hot settings under 0 dBTP, leaves anything under it alone bit for bit, turns a
+// steady tone over it down cleanly (no harmonics), switches without a click, and stays off for old sessions.
+void ceilingChecks (juce::AudioProcessor& proc)
+{
+    Harness h (proc);
+    const size_t settle = (size_t) sampleRate / 4;
+
+    // --- The lab's settings on a loud beat: over 0 dBTP without the ceiling, under it with ----------------------
+    {
+        labSettings (h); h.setBool ("Ceiling", false); h.apply();
+        const auto off = h.run ((int) sampleRate * 3, beat (-6.0f));
+        labSettings (h); h.setBool ("Ceiling", true); h.apply();
+        const auto on = h.run ((int) sampleRate * 3, beat (-6.0f));
+        const float tpOff = truePeakDb (off, settle), tpOn = truePeakDb (on, settle), peakOn = peakDb (on, settle);
+        check (tpOff > 0.0f && tpOn < -0.5f && peakOn <= -0.99f, "Ceiling: the lab's settings on a loud beat stay under 0 dBTP",
+               fmt (tpOff, 2) + " dBTP off, " + fmt (tpOn, 2) + " dBTP on (sample peak " + fmt (peakOn, 2) + " dBFS)");
+    }
+
+    // --- Under the ceiling it does nothing at all ---------------------------------------------------------------
+    {
+        const Gen quiet = mixOf (noise (-26.0f, 7), mixOf (sine (-20.0f, 80.0f), sine (-22.0f, 5000.0f)));
+        defaults (h.proc); h.set ("Low Mid Excite", "60"); h.set ("High Makeup", "6"); h.setBool ("Ceiling", false); h.apply();
+        const auto off = h.run ((int) sampleRate * 2, quiet);
+        defaults (h.proc); h.set ("Low Mid Excite", "60"); h.set ("High Makeup", "6"); h.setBool ("Ceiling", true); h.apply();
+        const auto on = h.run ((int) sampleRate * 2, quiet);
+        float diff = 0.0f;
+        for (size_t i = 0; i < on.size(); ++i) diff = std::max (diff, std::abs (on[i] - off[i]));
+        check (juce::exactlyEqual (diff, 0.0f) && peakDb (on) < -1.0f, "Ceiling: a signal under it comes out bit for bit the same",
+               "peak " + fmt (peakDb (on), 1) + " dBFS, largest difference " + juce::String (diff));
+    }
+
+    // --- A steady tone 7 dB over it: turned down to the ceiling, with nothing added -----------------------------
+    {
+        juce::String detail;
+        bool ok = true;
+        for (double hz : { 1000.0, 3000.0 })
+        {
+            defaults (h.proc); h.set ("Output", "12"); h.apply();
+            const auto out = h.run ((int) sampleRate * 2, sine (-6.0f, (float) hz));
+            const size_t from = (size_t) sampleRate, to = from + (size_t) sampleRate;
+            const float tone = toneDb (out, from, to, hz);
+            const float h2 = toneDb (out, from, to, 2 * hz) - tone, h3 = toneDb (out, from, to, 3 * hz) - tone;
+            const float peak = peakDb (out, from, to);
+            ok = ok && h2 < -90.0f && h3 < -90.0f && peak <= -0.99f && peak > -1.6f;
+            detail << fmt ((float) hz, 0) << " Hz: peak " << fmt (peak, 2) << " dBFS, 2nd " << fmt (h2, 1) << ", 3rd " << fmt (h3, 1) << " dB; ";
+        }
+        check (ok, "Ceiling: a steady tone over it is turned down cleanly (no harmonics added)", detail);
+    }
+
+    // --- Switching it on and off mid-note: a fade, not a step ---------------------------------------------------
+    {
+        auto maxStep = [] (const std::vector<float>& v, size_t from)
+        {
+            float m = 0.0f;
+            for (size_t i = juce::jmax ((size_t) 1, from); i < v.size(); ++i) m = juce::jmax (m, std::abs (v[i] - v[i - 1]));
+            return m;
+        };
+        const Gen hot = sine (-6.0f, 999.76f);
+        defaults (h.proc); h.set ("Output", "12"); h.setBool ("Ceiling", false); h.apply();
+        const float steady = maxStep (h.run ((int) sampleRate, hot), settle); // the louder of the two states
+        defaults (h.proc); h.set ("Output", "12"); h.setBool ("Ceiling", true); h.apply();
+        auto* p = h.find ("Ceiling");
+        const auto moved = playWithMoves (h, hot, (int) sampleRate * 2, p, { { 24064, 0.0f }, { 38400, 1.0f }, { 52736, 0.0f }, { 67072, 1.0f } });
+        const float change = maxStep (moved, settle);
+        check (change <= steady * 1.01f, "Ceiling: switching it mid-note fades, no click",
+               "biggest step " + fmt (change, 4) + " against " + fmt (steady, 4) + " steady");
+    }
+
+    // --- Saved states: on and off both recall; a session from before the Ceiling loads with it off -------------
+    {
+        auto roundTrip = [&] (bool on)
+        {
+            defaults (h.proc); h.setBool ("Ceiling", on); h.apply();
+            juce::MemoryBlock state;
+            proc.getStateInformation (state);
+            defaults (h.proc); h.setBool ("Ceiling", ! on); h.apply();
+            proc.setStateInformation (state.getData(), (int) state.getSize());
+            h.apply();
+            return h.text ("Ceiling");
+        };
+        const auto on = roundTrip (true), off = roundTrip (false);
+        check (on == "On" && off == "Off", "Ceiling: saved on and off both recall", "'" + on + "', '" + off + "'");
+        defaults (h.proc); h.apply();
+        check (h.text ("Ceiling") == "On", "Ceiling: on in a new copy", h.text ("Ceiling"));
+
+        if (dynamic_cast<HalationAudioProcessor*> (&proc) != nullptr) // the state's own format, not a host's wrapper
+        {
+            defaults (h.proc); h.set ("Low Excite", "37"); h.apply();
+            juce::MemoryBlock state;
+            proc.getStateInformation (state);
+            auto xml = juce::AudioProcessor::getXmlFromBinary (state.getData(), (int) state.getSize());
+            bool removed = false;
+            if (xml != nullptr)
+                for (auto* e : xml->getChildIterator())
+                    if (e->getStringAttribute ("id") == halation::ids::ceiling) { xml->removeChildElement (e, true); removed = true; break; }
+            juce::MemoryBlock old;
+            if (xml != nullptr) juce::AudioProcessor::copyXmlToBinary (*xml, old);
+            defaults (h.proc); h.apply();
+            proc.setStateInformation (old.getData(), (int) old.getSize());
+            h.apply();
+            check (removed && h.text ("Ceiling") == "Off" && h.text ("Low Excite") == "37 %",
+                   "Ceiling: a session saved before it existed loads with it off, so it sounds as it did",
+                   "'" + h.text ("Ceiling") + "', '" + h.text ("Low Excite") + "'");
+        }
+    }
+    defaults (h.proc); h.apply();
+}
+
+//==============================================================================
+// A host may switch a mono track to stereo without preparing the plugin again: stereo blocks must then still be
+// safe (the oversampler is always set up for two channels).
+void layoutSwitchCheck (juce::AudioProcessor& proc)
+{
+    if (dynamic_cast<HalationAudioProcessor*> (&proc) == nullptr) return; // hosted, the wrapper prepares on a change
+    auto layout = [] (const juce::AudioChannelSet& set)
+    {
+        juce::AudioProcessor::BusesLayout l;
+        l.inputBuses.add (set); l.outputBuses.add (set);
+        return l;
+    };
+    proc.releaseResources();
+    const bool mono = proc.setBusesLayout (layout (juce::AudioChannelSet::mono()));
+    proc.setRateAndBufferSizeDetails (sampleRate, blockSize);
+    proc.prepareToPlay (sampleRate, blockSize);
+    const bool stereo = proc.setBusesLayout (layout (juce::AudioChannelSet::stereo())); // no prepare after this
+    juce::AudioBuffer<float> buffer (2, blockSize);
+    juce::MidiBuffer midi;
+    bool finite = true;
+    float peak = 0.0f;
+    const auto gen = sine (-6.0f, 440.0f);
+    for (int b = 0; b < 40; ++b)
+    {
+        for (int ch = 0; ch < 2; ++ch)
+            for (int i = 0; i < blockSize; ++i) buffer.setSample (ch, i, gen (b * blockSize + i));
+        proc.processBlock (buffer, midi);
+        for (int ch = 0; ch < 2; ++ch)
+            for (int i = 0; i < blockSize; ++i) { finite = finite && std::isfinite (buffer.getSample (ch, i)); peak = std::max (peak, std::abs (buffer.getSample (ch, i))); }
+    }
+    proc.releaseResources();
+    proc.setBusesLayout (layout (juce::AudioChannelSet::stereo()));
+    proc.setRateAndBufferSizeDetails (sampleRate, blockSize);
+    proc.prepareToPlay (sampleRate, blockSize);
+    check (mono && stereo && finite && peak > 0.1f, "Prepared mono, then switched to stereo without preparing: still safe",
+           "peak " + fmt (toDb (peak), 1) + " dBFS");
 }
 
 void labFindings (juce::AudioProcessor& proc)
@@ -649,6 +826,8 @@ void runSuite (juce::AudioProcessor& proc)
 
     // --- An outside lab's findings, with its settings ------------------------------------------------------------
     labFindings (proc);
+    ceilingChecks (proc);
+    layoutSwitchCheck (proc);
 }
 } // namespace
 
