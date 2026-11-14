@@ -153,7 +153,7 @@ std::vector<float> renderAt (juce::AudioProcessor& proc, double rate, int block,
 // 64-tap Blackman-windowed sinc (about what a converter's reconstruction gives)
 float truePeakDb (const std::vector<float>& v, size_t from)
 {
-    constexpr int half = 32, os = 8;
+    static constexpr int half = 32, os = 8; // static: MSVC wants a capture for a plain local in the lambda below
     static const auto taps = []
     {
         std::vector<std::vector<double>> t ((size_t) os, std::vector<double> (2 * half));
