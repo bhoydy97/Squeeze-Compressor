@@ -22,6 +22,7 @@
 
 #include <LBAudio/Biquad.h>
 #include "../../Squeeze/Source/CompressorDSP.h"
+#include "../../Ceiling/Source/CeilingDSP.h"
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -373,5 +374,13 @@ struct Params
     Splits splits;
     std::array<BandParams, numBands> bands;
     float inputDb = 0.0f, outputDb = 0.0f, mix = 1.0f; // mix 0..1
+    bool ceiling = true;
 };
+
+//==============================================================================
+// Output ceiling: LBAudio Ceiling's true-peak limiter (plugins/Ceiling/Source/CeilingDSP.h), after the output level,
+// holding the output at -1 dBTP however much makeup and excite there is. It turns the level down ahead of a peak
+// (2 ms look-ahead) rather than clipping it, so anything under the ceiling comes out untouched, bit for bit.
+constexpr float ceilingDb = -1.0f, ceilingReleaseMs = 80.0f;
+inline int ceilingLatency (double rate) { return ceiling::latencySamples (rate); }
 } // namespace halation

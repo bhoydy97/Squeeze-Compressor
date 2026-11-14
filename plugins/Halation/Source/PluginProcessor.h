@@ -14,6 +14,7 @@ inline constexpr const char* split3 = "split3";
 inline constexpr const char* input  = "input";
 inline constexpr const char* output = "output";
 inline constexpr const char* mix    = "mix";
+inline constexpr const char* ceiling = "ceiling";
 
 // Per-band parameter IDs: "b1_threshold" ... "b4_bypass"
 inline juce::String band (int b, const char* what) { return "b" + juce::String (b + 1) + "_" + what; }
@@ -85,6 +86,7 @@ private:
     void restoreState (const juce::ValueTree& state);
     void processChunk (float* const* io, int numChannels, int numSamples, const halation::Params& p);
     void setSplits (const halation::Splits& s);
+    void applyCeiling (float* const* io, int numChannels, int numSamples, bool on);
 
     std::unique_ptr<juce::dsp::Oversampling<float>> oversampler;
     double fs = 44100.0, osFs = 176400.0;
@@ -107,15 +109,20 @@ private:
     juce::AudioBuffer<float> bypassDelay; // the input, kept the latency back, for the bypassed sound
     int bypassPos = 0;
     std::array<halation::Exciter, halation::numBands> exciters;
+    ceiling::Limiter ceilingLimiter;
+    juce::AudioBuffer<float> ceilingDelay, ceilingDry; // the signal without the ceiling, kept as far back as the limiter keeps it
+    int ceilingPos = 0;
     double exciteAttack = 0.0, exciteRelease = 0.0;
 
     // Smoothed values
     float inGain = 1.0f, outGain = 1.0f, mix = 1.0f, smoothCoeff = 0.001f;
+    float ceilingAmount = 1.0f; // 0..1, so switching the ceiling fades it in or out instead of clicking
     std::array<float, halation::numBands> excite {}, exciteMix {};
     std::array<float, halation::numBands> compThreshold {}, compRatio {}; // glide, so a moved knob can't jump the gain
 
     std::atomic<float>* pSplit[3] {};
     std::atomic<float>* pInput = nullptr; std::atomic<float>* pOutput = nullptr; std::atomic<float>* pMix = nullptr;
+    std::atomic<float>* pCeiling = nullptr;
     std::array<std::array<std::atomic<float>*, halation::ids::numBandControls>, halation::numBands> pBand {};
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (HalationAudioProcessor)

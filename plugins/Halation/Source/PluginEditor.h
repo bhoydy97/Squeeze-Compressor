@@ -146,6 +146,7 @@ private:
     lbaudio::ui::LabelledKnob input  { processorRef.apvts, halation::ids::input,  "INPUT", true };
     lbaudio::ui::LabelledKnob output { processorRef.apvts, halation::ids::output, "OUTPUT", true };
     lbaudio::ui::LabelledKnob mix    { processorRef.apvts, halation::ids::mix,    "MIX" };
+    lbaudio::ui::Switch ceiling      { processorRef.apvts, halation::ids::ceiling, "CEILING" };
     lbaudio::ui::LevelMeter inMeter  { lbaudio::ui::LevelMeter::Kind::Level, "IN" };
     lbaudio::ui::LevelMeter outMeter { lbaudio::ui::LevelMeter::Kind::Level, "OUT" };
     juce::Rectangle<int> globalPanel;
